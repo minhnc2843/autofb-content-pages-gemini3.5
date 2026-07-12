@@ -1,0 +1,5 @@
+<?php
+
+test('post queue page can be rendered', function () {
+    // Phase 1/2 implementation.
+});

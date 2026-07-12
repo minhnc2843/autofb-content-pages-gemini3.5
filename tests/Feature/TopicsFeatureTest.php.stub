@@ -1,0 +1,5 @@
+<?php
+
+test('topics page can be rendered', function () {
+    // Phase 1 implementation.
+});

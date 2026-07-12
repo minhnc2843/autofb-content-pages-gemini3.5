@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Services\AI;
+
+class PostScoringService
+{
+    public function score(array $postData): array
+    {
+        return ['score' => 0, 'suggestions' => []];
+    }
+}

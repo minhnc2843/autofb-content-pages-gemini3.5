@@ -1,0 +1,215 @@
+import { useForm, router } from '@inertiajs/react';
+import { useState } from 'react';
+import AppLayout from '../../Components/AppLayout';
+
+export default function Index({ settings }) {
+    const { data, setData, post, processing, errors } = useForm({
+        pexels_api_key: settings?.pexels_api_key || '',
+        facebook_page_id: settings?.facebook_page_id || '',
+        facebook_page_access_token: settings?.facebook_page_access_token || '',
+        gemini_api_key: settings?.gemini_api_key || '',
+        meta_graph_version: settings?.meta_graph_version || 'v25.0',
+        facebook_publish_mode: settings?.facebook_publish_mode || 'fake',
+    });
+
+    const [showFields, setShowFields] = useState({
+        pexels_api_key: false,
+        facebook_page_access_token: false,
+        gemini_api_key: false,
+    });
+
+    const [validating, setValidating] = useState(false);
+
+    const toggleShow = (field) => {
+        setShowFields((prev) => ({ ...prev, [field]: !prev[field] }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        post('/settings');
+    };
+
+    const handleValidateFacebook = () => {
+        setValidating(true);
+        router.post('/settings/facebook/validate', {}, {
+            preserveScroll: true,
+            onFinish: () => setValidating(false),
+        });
+    };
+
+    return (
+        <AppLayout title="Settings">
+            <div className="mx-auto max-w-2xl space-y-6">
+                {/* Pexels Section */}
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-lg font-semibold text-gray-800">🔍 Pexels API</h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                PEXELS_API_KEY
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={showFields.pexels_api_key ? 'text' : 'password'}
+                                    value={data.pexels_api_key}
+                                    onChange={(e) => setData('pexels_api_key', e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    placeholder="Enter your Pexels API key"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => toggleShow('pexels_api_key')}
+                                    className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-500 hover:text-gray-700"
+                                >
+                                    {showFields.pexels_api_key ? 'Hide' : 'Show'}
+                                </button>
+                            </div>
+                            {errors.pexels_api_key && (
+                                <p className="mt-1 text-xs text-red-600">{errors.pexels_api_key}</p>
+                            )}
+                        </div>
+
+                        {/* Hidden fields to include in form submission */}
+                        <input type="hidden" name="facebook_page_id" value={data.facebook_page_id} />
+                        <input type="hidden" name="facebook_page_access_token" value={data.facebook_page_access_token} />
+                        <input type="hidden" name="gemini_api_key" value={data.gemini_api_key} />
+                        <input type="hidden" name="meta_graph_version" value={data.meta_graph_version} />
+                        <input type="hidden" name="facebook_publish_mode" value={data.facebook_publish_mode} />
+                    </form>
+                </div>
+
+                {/* Facebook Publishing Section */}
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-lg font-semibold text-gray-800">📘 Facebook Publishing</h2>
+
+                    {/* Warning for real mode */}
+                    {data.facebook_publish_mode === 'real' && (
+                        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            ⚠️ <strong>Real mode</strong> will publish approved posts to your Facebook Page via Graph API.
+                        </div>
+                    )}
+
+                    <div className="space-y-4">
+                        {/* Page ID */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                FACEBOOK_PAGE_ID
+                            </label>
+                            <input
+                                type="text"
+                                value={data.facebook_page_id}
+                                onChange={(e) => setData('facebook_page_id', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Enter your Facebook Page ID"
+                            />
+                        </div>
+
+                        {/* Page Access Token */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                FACEBOOK_PAGE_ACCESS_TOKEN
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={showFields.facebook_page_access_token ? 'text' : 'password'}
+                                    value={data.facebook_page_access_token}
+                                    onChange={(e) => setData('facebook_page_access_token', e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    placeholder="Enter your Page Access Token"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => toggleShow('facebook_page_access_token')}
+                                    className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-500 hover:text-gray-700"
+                                >
+                                    {showFields.facebook_page_access_token ? 'Hide' : 'Show'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Meta Graph Version */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                META_GRAPH_VERSION
+                            </label>
+                            <input
+                                type="text"
+                                value={data.meta_graph_version}
+                                onChange={(e) => setData('meta_graph_version', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="v25.0"
+                            />
+                        </div>
+
+                        {/* Publish Mode */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                FACEBOOK_PUBLISH_MODE
+                            </label>
+                            <select
+                                value={data.facebook_publish_mode}
+                                onChange={(e) => setData('facebook_publish_mode', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="fake">fake — No real Facebook API calls</option>
+                                <option value="real">real — Publish to Facebook via Graph API</option>
+                            </select>
+                        </div>
+
+                        {/* Validate Button */}
+                        <div>
+                            <button
+                                type="button"
+                                onClick={handleValidateFacebook}
+                                disabled={validating}
+                                className="rounded-lg border border-blue-600 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-50"
+                            >
+                                {validating ? 'Validating...' : '🔍 Validate Facebook Config'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Gemini Section */}
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-lg font-semibold text-gray-800">🤖 Gemini AI</h2>
+                    <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                        Gemini AI is disabled in Phase 2. It will be available in Phase 4.
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            GEMINI_API_KEY
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showFields.gemini_api_key ? 'text' : 'password'}
+                                value={data.gemini_api_key}
+                                onChange={(e) => setData('gemini_api_key', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Enter your Gemini API key"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => toggleShow('gemini_api_key')}
+                                className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-500 hover:text-gray-700"
+                            >
+                                {showFields.gemini_api_key ? 'Hide' : 'Show'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Save All Button */}
+                <div className="flex justify-end">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={processing}
+                        className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                        {processing ? 'Saving...' : '💾 Save All Settings'}
+                    </button>
+                </div>
+            </div>
+        </AppLayout>
+    );
+}

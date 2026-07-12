@@ -1,0 +1,5 @@
+<?php
+
+test('caption service can generate local caption', function () {
+    // Phase 2 implementation.
+});

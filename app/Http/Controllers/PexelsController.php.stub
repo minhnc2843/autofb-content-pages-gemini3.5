@@ -1,0 +1,8 @@
+<?php
+
+namespace App\Http\Controllers;
+
+class PexelsController extends Controller
+{
+    // Implement in assigned phase.
+}

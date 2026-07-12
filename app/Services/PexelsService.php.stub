@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Services;
+
+class PexelsService
+{
+    public function searchPhotos(string $keyword, int $perPage = 10): array
+    {
+        // Phase 2: implement with Laravel Http Client.
+        return [];
+    }
+
+    public function searchVideos(string $keyword, int $perPage = 10): array
+    {
+        // Phase 2: implement with Laravel Http Client.
+        return [];
+    }
+}

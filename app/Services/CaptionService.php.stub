@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Services;
+
+class CaptionService
+{
+    public function generate(array $topic, array $media, string $language = 'English'): string
+    {
+        return 'Wait for this moment... Follow for more.';
+    }
+}

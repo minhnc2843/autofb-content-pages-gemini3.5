@@ -1,0 +1,5 @@
+<?php
+
+test('pexels service maps photo response', function () {
+    // Phase 2 implementation with Http::fake().
+});

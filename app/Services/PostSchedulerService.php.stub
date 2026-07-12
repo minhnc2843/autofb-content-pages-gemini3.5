@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Services;
+
+class PostSchedulerService
+{
+    public function defaultDailySlots(): array
+    {
+        return ['08:00', '13:00', '20:00'];
+    }
+}

@@ -1,0 +1,8 @@
+<?php
+
+namespace App\Console\Commands;
+
+class PublishDuePostsCommand extends Command
+{
+    // Implement in assigned phase.
+}

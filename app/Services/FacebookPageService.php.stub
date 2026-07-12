@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Services;
+
+use RuntimeException;
+
+class FacebookPageService
+{
+    public function publishTextPost(array $post): array
+    {
+        throw new RuntimeException('Facebook publishing is disabled in current phase.');
+    }
+
+    public function publishPhotoPost(array $post): array
+    {
+        throw new RuntimeException('Facebook publishing is disabled in current phase.');
+    }
+
+    public function publishVideoPost(array $post): array
+    {
+        throw new RuntimeException('Facebook publishing is disabled in current phase.');
+    }
+}
