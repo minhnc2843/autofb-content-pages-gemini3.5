@@ -32,5 +32,13 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PEXELS_API_KEY" value="test_pexels_key_123"/>
+        <env name="FACEBOOK_PAGE_ID" value="test_page_id_123"/>
+        <env name="FACEBOOK_PAGE_ACCESS_TOKEN" value="test_token_123"/>
+        <env name="GEMINI_API_KEY" value="test_gemini_key_123"/>
+        <env name="FACEBOOK_PUBLISH_MODE" value="fake"/>
+        <env name="META_GRAPH_VERSION" value="v25.0"/>
+        <env name="FACEBOOK_VIDEO_UPLOAD_MODE" value="remote_url"/>
+        <env name="FACEBOOK_VIDEO_MAX_MB" value="100"/>
     </php>
 </phpunit>

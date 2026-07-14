@@ -107,4 +107,23 @@ class PexelsController extends Controller
         return redirect()->route('queue.index')
             ->with('success', 'Draft post created successfully!');
     }
+
+    /**
+     * Run AI analysis on stock media item.
+     */
+    public function analyzeMedia(Request $request)
+    {
+        $request->validate([
+            'media' => 'required|array',
+            'keyword' => 'nullable|string',
+        ]);
+
+        $mediaData = $request->input('media');
+        $keyword = $request->input('keyword', 'beautiful');
+
+        $gemini = new \App\Services\AI\GeminiService();
+        $analysis = $gemini->analyzeMedia($mediaData, $keyword);
+
+        return response()->json($analysis);
+    }
 }

@@ -10,6 +10,9 @@ export default function Index({ settings }) {
         gemini_api_key: settings?.gemini_api_key || '',
         meta_graph_version: settings?.meta_graph_version || 'v25.0',
         facebook_publish_mode: settings?.facebook_publish_mode || 'fake',
+        facebook_video_upload_mode: settings?.facebook_video_upload_mode || 'remote_url',
+        facebook_video_max_mb: settings?.facebook_video_max_mb || '100',
+        facebook_publish_as_reel: settings?.facebook_publish_as_reel || 'false',
     });
 
     const [showFields, setShowFields] = useState({
@@ -75,6 +78,9 @@ export default function Index({ settings }) {
                         <input type="hidden" name="gemini_api_key" value={data.gemini_api_key} />
                         <input type="hidden" name="meta_graph_version" value={data.meta_graph_version} />
                         <input type="hidden" name="facebook_publish_mode" value={data.facebook_publish_mode} />
+                        <input type="hidden" name="facebook_video_upload_mode" value={data.facebook_video_upload_mode} />
+                        <input type="hidden" name="facebook_video_max_mb" value={data.facebook_video_max_mb} />
+                        <input type="hidden" name="facebook_publish_as_reel" value={data.facebook_publish_as_reel} />
                     </form>
                 </div>
 
@@ -156,6 +162,53 @@ export default function Index({ settings }) {
                             </select>
                         </div>
 
+                        {/* Video Upload Mode */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                FACEBOOK_VIDEO_UPLOAD_MODE
+                            </label>
+                            <select
+                                value={data.facebook_video_upload_mode}
+                                onChange={(e) => setData('facebook_video_upload_mode', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="remote_url">remote_url — Facebook fetches the video from Pexels</option>
+                                <option value="local_download">local_download — Download and upload (Placeholder)</option>
+                            </select>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Note: remote_url works only if Facebook can fetch the video URL.
+                            </p>
+                        </div>
+
+                        {/* Video Max MB */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                FACEBOOK_VIDEO_MAX_MB
+                            </label>
+                            <input
+                                type="number"
+                                value={data.facebook_video_max_mb}
+                                onChange={(e) => setData('facebook_video_max_mb', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="100"
+                            />
+                        </div>
+
+                        {/* Publish as Reel */}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                FACEBOOK_PUBLISH_AS_REEL
+                            </label>
+                            <select
+                                value={data.facebook_publish_as_reel}
+                                onChange={(e) => setData('facebook_publish_as_reel', e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="false">false — Publish videos as regular Page posts</option>
+                                <option value="true">true — Publish videos as Reels</option>
+                            </select>
+                        </div>
+
                         {/* Validate Button */}
                         <div>
                             <button
@@ -173,8 +226,8 @@ export default function Index({ settings }) {
                 {/* Gemini Section */}
                 <div className="rounded-xl bg-white p-6 shadow-sm">
                     <h2 className="mb-4 text-lg font-semibold text-gray-800">🤖 Gemini AI</h2>
-                    <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                        Gemini AI is disabled in Phase 2. It will be available in Phase 4.
+                    <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50/50 px-4 py-3 text-sm text-indigo-700 font-medium">
+                        🚀 Gemini AI is active. Set your API Key to enable AI Caption generation, Post Scoring, and Page Audits.
                     </div>
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">

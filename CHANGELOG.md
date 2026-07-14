@@ -1,5 +1,29 @@
 # Changelog
 
+## [Phase 2.1] — 2026-07-13
+
+### Added
+- **Facebook Video Publishing** support via Meta Graph Video API:
+  - `publishVideoPost(PostQueue $post)` in `FacebookPageService`: Supports remote_url uploads, checks video size limits, fallbacks for different API response IDs (`post_id`, `id`, `video_id`), and logs detailed publishing operations securely.
+  - Video upload mode settings: `FACEBOOK_VIDEO_UPLOAD_MODE` (remote_url, local_download) and `FACEBOOK_VIDEO_MAX_MB`.
+  - Placeholder skeleton for `local_download` upload mode.
+- **FacebookReelsService** skeleton: Setup structure for future Reels chunk-upload integration.
+- **Pexels Video Parsing Optimization**:
+  - Automatically filters Pexels search results to select high-quality MP4 links under 1080p.
+  - Graceful resolution fallback in case hd/sd requirements aren't present.
+- **Queue Page Updates**:
+  - Added video badges (🎬), video play links, and media type indicators.
+  - Updated confirmation modal warnings specifically for video types.
+- **Migration**: Added `publish_started_at`, `published_at`, and `publish_attempts` columns to `posts_queue` table.
+- **Console Command Updates**: Logs detailed metrics (Text vs Photo vs Video) and status updates on publishing attempts.
+
+### Tests Added
+- `FacebookPageServiceVideoTest`: 10 video-specific tests (fake publish, real endpoints, ID extraction priority, payload limits, API errors, media type verification, token safety).
+- `PublishDuePostsCommandTest`: 5 new command/route feature tests for video publishing.
+- `PexelsServiceTest`: Added `test_video_parsing_prefers_mp4_under_1080p` unit test.
+
+---
+
 ## [Phase 2] — 2026-07-12
 
 ### Added
@@ -32,7 +56,7 @@
 - Secret settings masked with `•` before sending to frontend.
 - Masked values skipped on save (prevents overwriting with mask characters).
 
-### Not Included (Phase 2.1 / Phase 3+)
+### Not Included
 - Video publishing via Facebook API.
 - Real Gemini API calls.
 - Browser automation.

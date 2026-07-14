@@ -18,12 +18,15 @@ class SettingController extends Controller
             'GEMINI_API_KEY',
             'META_GRAPH_VERSION',
             'FACEBOOK_PUBLISH_MODE',
+            'FACEBOOK_VIDEO_UPLOAD_MODE',
+            'FACEBOOK_VIDEO_MAX_MB',
+            'FACEBOOK_PUBLISH_AS_REEL',
         ];
 
         $settings = [];
         foreach ($settingKeys as $key) {
             $setting = Setting::where('key', $key)->first();
-            $value = $setting?->value ?? '';
+            $value = Setting::getValue($key) ?? '';
 
             // Mask secret fields — never send full token to frontend after save
             if ($setting?->is_secret && !empty($value)) {
@@ -33,9 +36,12 @@ class SettingController extends Controller
             }
         }
 
-        // Also check env values for display
+        // Also check env values for display fallback
         $settings['meta_graph_version'] = $settings['meta_graph_version'] ?: env('META_GRAPH_VERSION', 'v25.0');
         $settings['facebook_publish_mode'] = $settings['facebook_publish_mode'] ?: env('FACEBOOK_PUBLISH_MODE', 'fake');
+        $settings['facebook_video_upload_mode'] = $settings['facebook_video_upload_mode'] ?: env('FACEBOOK_VIDEO_UPLOAD_MODE', 'remote_url');
+        $settings['facebook_video_max_mb'] = $settings['facebook_video_max_mb'] ?: env('FACEBOOK_VIDEO_MAX_MB', '100');
+        $settings['facebook_publish_as_reel'] = $settings['facebook_publish_as_reel'] ?: env('FACEBOOK_PUBLISH_AS_REEL', 'false');
 
         return Inertia::render('Settings/Index', [
             'settings' => $settings,
@@ -51,6 +57,9 @@ class SettingController extends Controller
             'gemini_api_key' => 'nullable|string|max:500',
             'meta_graph_version' => 'nullable|string|max:20',
             'facebook_publish_mode' => 'nullable|in:fake,real',
+            'facebook_video_upload_mode' => 'nullable|in:remote_url,local_download',
+            'facebook_video_max_mb' => 'nullable|integer|min:1|max:5000',
+            'facebook_publish_as_reel' => 'nullable|in:true,false',
         ]);
 
         $secretFields = ['pexels_api_key', 'facebook_page_access_token', 'gemini_api_key'];
@@ -62,6 +71,9 @@ class SettingController extends Controller
             'GEMINI_API_KEY' => $request->input('gemini_api_key'),
             'META_GRAPH_VERSION' => $request->input('meta_graph_version'),
             'FACEBOOK_PUBLISH_MODE' => $request->input('facebook_publish_mode'),
+            'FACEBOOK_VIDEO_UPLOAD_MODE' => $request->input('facebook_video_upload_mode'),
+            'FACEBOOK_VIDEO_MAX_MB' => $request->input('facebook_video_max_mb'),
+            'FACEBOOK_PUBLISH_AS_REEL' => $request->input('facebook_publish_as_reel'),
         ];
 
         foreach ($fields as $key => $value) {

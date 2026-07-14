@@ -24,6 +24,8 @@ class FacebookPageServiceTest extends TestCase
 
     public function test_missing_page_id_throws_clear_error(): void
     {
+        Setting::setValue('FACEBOOK_PAGE_ID', '');
+
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Facebook Page ID is not configured');
 
@@ -32,6 +34,8 @@ class FacebookPageServiceTest extends TestCase
 
     public function test_missing_token_throws_clear_error(): void
     {
+        Setting::setValue('FACEBOOK_PAGE_ACCESS_TOKEN', '');
+
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Facebook Page Access Token is not configured');
 
@@ -174,11 +178,19 @@ class FacebookPageServiceTest extends TestCase
         }
     }
 
-    public function test_video_post_returns_error(): void
+    public function test_video_post_returns_success_for_local_download_mode(): void
     {
         Setting::setValue('FACEBOOK_PAGE_ID', '123456789');
         Setting::setValue('FACEBOOK_PAGE_ACCESS_TOKEN', 'test-token', true);
         Setting::setValue('FACEBOOK_PUBLISH_MODE', 'real');
+        Setting::setValue('FACEBOOK_VIDEO_UPLOAD_MODE', 'local_download');
+
+        Http::fake([
+            'https://videos.pexels.com/88888/hd.mp4' => Http::response('fake_video_bytes_123', 200),
+            'graph.facebook.com/v25.0/123456789/videos' => Http::response([
+                'id' => 'fb_video_id_9999',
+            ], 200),
+        ]);
 
         $mediaItem = \App\Models\MediaItem::create([
             'pexels_id' => '88888',
@@ -196,9 +208,9 @@ class FacebookPageServiceTest extends TestCase
 
         $result = $this->service->publishPost($post);
 
-        $this->assertFalse($result['success']);
-        $this->assertStringContainsString('Phase 2', $result['message']);
-        $this->assertEquals('failed', $post->fresh()->status);
+        $this->assertTrue($result['success']);
+        $this->assertEquals('fb_video_id_9999', $post->fresh()->facebook_post_id);
+        $this->assertEquals('published', $post->fresh()->status);
     }
 
     public function test_graph_base_url_default(): void

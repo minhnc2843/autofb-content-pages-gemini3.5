@@ -95,9 +95,9 @@ class FacebookSettingsTest extends TestCase
             'key' => 'FACEBOOK_PAGE_ID',
             'value' => '999888777',
         ]);
+        $this->assertEquals('my-token-xyz', Setting::getValue('FACEBOOK_PAGE_ACCESS_TOKEN'));
         $this->assertDatabaseHas('settings', [
             'key' => 'FACEBOOK_PAGE_ACCESS_TOKEN',
-            'value' => 'my-token-xyz',
             'is_secret' => true,
         ]);
         $this->assertDatabaseHas('settings', [

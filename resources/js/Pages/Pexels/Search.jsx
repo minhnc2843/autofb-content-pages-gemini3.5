@@ -19,16 +19,9 @@ export default function Search({ results, error }) {
     };
 
     const handleCreateDraft = (media) => {
-        setCreatingId(media.id);
+        setCreatingId(media.pexels_id);
         router.post('/pexels/create-draft', {
-            pexels_id: media.id,
-            type: media.type || 'photo',
-            url: media.url,
-            media_url: media.src?.original || media.src?.large || media.video_files?.[0]?.link || '',
-            thumbnail_url: media.src?.medium || media.video_pictures?.[0]?.picture || media.image || '',
-            photographer: media.photographer || media.user?.name || 'Unknown',
-            width: media.width,
-            height: media.height,
+            media: media,
         }, {
             preserveScroll: true,
             onFinish: () => setCreatingId(null),

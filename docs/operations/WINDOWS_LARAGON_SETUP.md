@@ -19,7 +19,7 @@ cd C:\laragon\www
 ## Bước 3 — Vào project
 
 ```bat
-cd auto-fb-content-planner
+cd auto-fb-content
 ```
 
 ## Bước 4 — Cài dependency

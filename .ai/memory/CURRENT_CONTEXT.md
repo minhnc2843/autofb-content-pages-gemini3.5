@@ -6,8 +6,9 @@ Bạn đang build dự án Auto FB Content Planner.
 
 - **Phase 1 đã hoàn thành** (2026-07-11).
 - **Phase 2 đã hoàn thành** (2026-07-12).
+- **Phase 2.1 đã hoàn thành** (2026-07-13).
 - App chạy được local tại http://127.0.0.1:8000.
-- 49 tests pass 100%.
+- 65 tests pass 100%.
 - npm run build pass.
 
 ## Stack đã cài đặt
@@ -22,28 +23,21 @@ Bạn đang build dự án Auto FB Content Planner.
 
 ## Chức năng đã hoàn thành
 
-### Phase 1
-1. Dashboard: thống kê draft/approved/published/published_fake/failed.
-2. Topics: CRUD + toggle active.
-3. Pexels Search: tìm photo/video, tạo draft post.
-4. Queue: xem/sửa/approve/unapprove/xóa bài.
-5. Settings: lưu API keys.
-6. Commands: posts:generate-daily, posts:publish-due.
-7. Services: PexelsService, CaptionService (5 ngôn ngữ).
+### Phase 2.1
+1. Đăng video thường lên Facebook Page qua Meta Graph Video API (`publishVideoPost`).
+2. Tự động kiểm tra dung lượng video trước khi upload bằng HTTP HEAD (`FACEBOOK_VIDEO_MAX_MB`).
+3. Lọc chất lượng video MP4 <= 1080p tối ưu từ Pexels.
+4. Cập nhật Queue UI với badges video, thời gian video, và play links.
+5. Cập nhật Settings UI với Video Upload Mode và Max MB.
+6. post_queue bổ sung các cột tracking `publish_started_at`, `published_at`, và `publish_attempts`.
+7. FacebookReelsService skeleton cho Reels integration ở Phase tiếp theo.
+8. Bổ sung 16 unit và feature tests cho Video publishing.
 
-### Phase 2
-8. FacebookPageService: publishTextPost, publishPhotoPost, validateConfig.
-9. Fake/Real publish mode (FACEBOOK_PUBLISH_MODE).
-10. Publish Now button cho bài approved.
-11. PostPublishLog: log mọi lần publish.
-12. Settings: Facebook Publishing section, Validate Config button.
-13. Token masking: không expose token ra frontend.
-14. 27 tests mới cho Facebook features.
+## Phase tiếp theo: Phase 2.2 hoặc Phase 3
 
-## Phase tiếp theo: Phase 2.1 hoặc Phase 3
-
-- Phase 2.1: Video publishing.
-- Phase 3: Xem docs/phases/ để biết chi tiết.
+- Phase 2.2: Local video download & multipart upload.
+- Phase 3: Advanced features.
+- Xem docs/phases/ để biết chi tiết.
 
 ## Khi bắt đầu session mới, hãy đọc
 

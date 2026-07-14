@@ -92,6 +92,52 @@ export default function Edit({ post }) {
                             </Link>
                         </div>
                     </form>
+
+                    {/* Status History Timeline */}
+                    {post.status_history && post.status_history.length > 0 && (
+                        <div className="mt-8 border-t border-gray-200 pt-6">
+                            <h3 className="mb-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                ⏳ Status Transition History
+                            </h3>
+                            <div className="flow-root">
+                                <ul className="-mb-8">
+                                    {post.status_history.map((log, idx) => (
+                                        <li key={idx}>
+                                            <div className="relative pb-6">
+                                                {idx !== post.status_history.length - 1 ? (
+                                                    <span
+                                                        className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                                                        aria-hidden="true"
+                                                    />
+                                                ) : null}
+                                                <div className="relative flex space-x-3">
+                                                    <div>
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 border border-indigo-100 ring-8 ring-white text-xs">
+                                                            🔄
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                                                        <div>
+                                                            <p className="text-sm text-gray-600">
+                                                                Transitioned from <span className="font-semibold text-gray-800 capitalize">{log.from_status.replace('_', ' ')}</span> to{' '}
+                                                                <span className="font-semibold text-indigo-700 capitalize">{log.to_status.replace('_', ' ')}</span>
+                                                            </p>
+                                                            <p className="text-xs text-gray-400">
+                                                                Operator: <span className="font-medium text-gray-600">{log.changed_by}</span>
+                                                            </p>
+                                                        </div>
+                                                        <div className="whitespace-nowrap text-right text-xs text-gray-400">
+                                                            <span>{log.created_at}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </AppLayout>

@@ -94,9 +94,35 @@ class PexelsService
 
             $data = $response->json();
             $videos = collect($data['videos'] ?? [])->map(function ($video) {
-                $videoFile = collect($video['video_files'] ?? [])->first(function ($file) {
-                    return ($file['quality'] ?? '') === 'hd' || ($file['quality'] ?? '') === 'sd';
-                }) ?? ($video['video_files'][0] ?? null);
+                // Find MP4 files that are <= 1080p
+                $videoFile = collect($video['video_files'] ?? [])
+                    ->filter(function ($file) {
+                        return str_contains(strtolower($file['file_type'] ?? ''), 'video/mp4') || 
+                               str_contains(strtolower($file['link'] ?? ''), '.mp4');
+                    })
+                    ->filter(function ($file) {
+                        $w = $file['width'] ?? 0;
+                        $h = $file['height'] ?? 0;
+                        return $w <= 1920 && $h <= 1080;
+                    })
+                    ->sortByDesc(function ($file) {
+                        return $file['width'] ?? 0;
+                    })
+                    ->first();
+
+                if (!$videoFile) {
+                    // Fallback 1: get any mp4 file
+                    $videoFile = collect($video['video_files'] ?? [])
+                        ->first(function ($file) {
+                            return str_contains(strtolower($file['file_type'] ?? ''), 'video/mp4') || 
+                                   str_contains(strtolower($file['link'] ?? ''), '.mp4');
+                        });
+                }
+
+                if (!$videoFile) {
+                    // Fallback 2: first video file available
+                    $videoFile = $video['video_files'][0] ?? null;
+                }
 
                 return [
                     'pexels_id' => (string) $video['id'],

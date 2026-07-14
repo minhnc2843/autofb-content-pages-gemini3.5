@@ -158,6 +158,45 @@ class CaptionService
     }
 
     /**
+     * Generate caption using Gemini AI with preset styles.
+     */
+    public function generateWithAi(array $topic, array $media, string $language = 'english', string $preset = 'creative'): string
+    {
+        $geminiService = new \App\Services\AI\GeminiService();
+        
+        $keyword = $topic['keyword'] ?? $topic['name'] ?? 'nature';
+        $photographer = $media['photographer'] ?? 'Unknown';
+        $mediaType = $media['type'] ?? 'photo';
+        
+        $presetPrompts = [
+            'creative' => 'Write a highly engaging, creative, and storytelling caption with relevant emojis and hashtags.',
+            'professional' => 'Write a formal, polite, informative, and professional caption. Avoid excessive emojis, use minimal tags.',
+            'short' => 'Write a concise, simple, and punchy caption under 2 sentences.',
+            'promotional' => 'Write a promotional caption featuring a clear Call to Action (CTA) encouraging users to comment, share, or follow.',
+        ];
+        
+        $promptInstruction = $presetPrompts[$preset] ?? $presetPrompts['creative'];
+        
+        $prompt = "You are a senior social media manager.
+Task: Write a Facebook page caption in " . strtoupper($language) . " language.
+Topic keyword/theme: '{$keyword}'
+Media info: A {$mediaType} taken by photographer '{$photographer}' (Please credit this photographer in the caption).
+Style requirement: {$promptInstruction}
+Do NOT wrap the caption in quotes. Return ONLY the caption text itself.";
+
+        try {
+            $result = $geminiService->generateText($prompt);
+            if (isset($result['text']) && !empty($result['text'])) {
+                return trim($result['text']);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gemini caption generation failed, falling back to local template: " . $e->getMessage());
+        }
+        
+        return $this->generate($topic, $media, $language);
+    }
+
+    /**
      * Pick a random item from an array.
      */
     protected function pickRandom(array $items): string

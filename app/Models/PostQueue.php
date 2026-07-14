@@ -11,11 +11,31 @@ class PostQueue extends Model
 
     protected $table = 'posts_queue';
 
+    protected static function booted()
+    {
+        static::updating(function ($post) {
+            if ($post->isDirty('status')) {
+                $from = $post->getOriginal('status') ?? 'unknown';
+                $to = $post->status;
+                if ($from !== $to) {
+                    $post->statusHistories()->create([
+                        'from_status' => $from,
+                        'to_status' => $to,
+                        'changed_by' => auth()->user()?->name ?? 'system',
+                    ]);
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'topic_id',
         'media_item_id',
         'caption',
         'scheduled_at',
+        'publish_started_at',
+        'published_at',
+        'publish_attempts',
         'status',
         'facebook_post_id',
         'error_message',
@@ -23,6 +43,9 @@ class PostQueue extends Model
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'publish_started_at' => 'datetime',
+        'published_at' => 'datetime',
+        'publish_attempts' => 'integer',
     ];
 
     public function topic()
@@ -38,6 +61,17 @@ class PostQueue extends Model
     public function publishLogs()
     {
         return $this->hasMany(PostPublishLog::class, 'post_queue_id');
+    }
+
+    public function aiAnalyses()
+    {
+        return $this->hasMany(AiAnalysis::class, 'target_id')
+            ->where('target_type', 'post_queue');
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(PostStatusHistory::class, 'post_queue_id');
     }
 
     public function scopeDraft($query)

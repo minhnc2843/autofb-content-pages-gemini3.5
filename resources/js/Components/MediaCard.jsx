@@ -1,19 +1,31 @@
 export default function MediaCard({ media, onCreateDraft, creating }) {
     const isVideo = media.type === 'video';
-    const thumbnail = isVideo ? (media.video_pictures?.[0]?.picture || media.image) : media.src?.medium || media.src?.original;
-    const dimensions = isVideo
-        ? `${media.width}×${media.height}`
-        : `${media.width}×${media.height}`;
+    const thumbnail = media.thumbnail_url;
+    const dimensions = media.width && media.height ? `${media.width}×${media.height}` : '—';
+    
+    // Format duration helper (e.g. 30 -> 0:30)
+    const formatDuration = (seconds) => {
+        if (!seconds) return null;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
 
     return (
         <div className="group overflow-hidden rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md">
             {/* Thumbnail */}
             <div className="relative aspect-video overflow-hidden bg-gray-200">
-                <img
-                    src={thumbnail}
-                    alt={media.alt || media.url || 'Pexels media'}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                />
+                {thumbnail ? (
+                    <img
+                        src={thumbnail}
+                        alt={media.photographer || 'Pexels media'}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+                        📷
+                    </div>
+                )}
                 {/* Type badge */}
                 <span
                     className={`absolute top-2 right-2 rounded-full px-2 py-0.5 text-xs font-semibold uppercase text-white ${
@@ -22,17 +34,24 @@ export default function MediaCard({ media, onCreateDraft, creating }) {
                 >
                     {isVideo ? '🎬 Video' : '📷 Photo'}
                 </span>
+                
+                {/* Duration badge for video */}
+                {isVideo && media.duration && (
+                    <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
+                        ⏱️ {formatDuration(media.duration)}
+                    </span>
+                )}
             </div>
 
             {/* Info */}
             <div className="p-4">
-                <p className="text-sm font-medium text-gray-800 truncate">
-                    📸 {media.photographer || media.user?.name || 'Unknown'}
+                <p className="text-sm font-medium text-gray-800 truncate" title={media.photographer}>
+                    👤 {media.photographer || 'Unknown'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">{dimensions}</p>
 
                 <a
-                    href={media.url}
+                    href={media.pexels_url || media.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-1 inline-block text-xs text-indigo-600 hover:underline"

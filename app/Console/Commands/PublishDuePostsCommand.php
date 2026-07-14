@@ -32,7 +32,8 @@ class PublishDuePostsCommand extends Command
         $failed = 0;
 
         foreach ($duePosts as $post) {
-            $this->info("Processing post #{$post->id} (scheduled: {$post->scheduled_at})");
+            $type = $post->mediaItem?->type ?? 'text';
+            $this->info("Processing post #{$post->id} [Type: {$type}] (scheduled: {$post->scheduled_at})");
 
             try {
                 $result = $service->publishPost($post);
@@ -60,9 +61,14 @@ class PublishDuePostsCommand extends Command
             }
         }
 
+        $statsByType = $duePosts->groupBy(function($post) {
+            return $post->mediaItem?->type ?? 'text';
+        })->map->count();
+
         $this->newLine();
         $this->info("=== Summary ===");
         $this->info("Total found: {$duePosts->count()}");
+        $this->info("By Type: Text: " . ($statsByType['text'] ?? 0) . ", Photo: " . ($statsByType['photo'] ?? 0) . ", Video: " . ($statsByType['video'] ?? 0));
         $this->info("Published: {$published}");
         $this->info("Failed: {$failed}");
         $this->info("Mode: {$mode}");

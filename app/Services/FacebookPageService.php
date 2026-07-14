@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PostPublishLog;
 use App\Models\PostQueue;
 use App\Models\Setting;
+use App\Models\PageInsight;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -211,18 +212,220 @@ class FacebookPageService
     }
 
     /**
-     * Publish a video post — not supported in Phase 2.
+     * Publish a video post.
      */
     public function publishVideoPost(PostQueue $post): array
     {
-        $this->logAction($post, 'publish_video', false, [
-            'reason' => 'Video publishing disabled in Phase 2',
-        ], null, 'Facebook video publishing is disabled in Phase 2. Use Phase 2.1 for video upload support.');
+        $post->load('mediaItem');
 
-        return [
-            'success' => false,
-            'message' => 'Facebook video publishing is disabled in Phase 2. Use Phase 2.1 for video upload support.',
-        ];
+        if (!$post->mediaItem || $post->mediaItem->type !== 'video') {
+            return ['success' => false, 'message' => 'Post does not have a valid video media item.'];
+        }
+
+        $mode = $this->getPublishMode();
+        if ($mode === 'fake') {
+            $timestamp = time();
+            $fakeId = "fake_video_{$post->id}_{$timestamp}";
+
+            if (!$post->publish_started_at) {
+                $post->increment('publish_attempts');
+                $post->update(['publish_started_at' => now()]);
+            }
+
+            $post->update([
+                'status' => 'published_fake',
+                'facebook_post_id' => $fakeId,
+                'published_at' => now(),
+                'error_message' => null,
+            ]);
+
+            $this->logAction($post, 'publish_video', true, [
+                'caption_preview' => substr($post->caption, 0, 100),
+            ], ['mode' => 'fake', 'facebook_post_id' => $fakeId], null);
+
+            return [
+                'success' => true,
+                'facebook_post_id' => $fakeId,
+                'message' => 'Video post fake-published successfully.',
+                'mode' => 'fake',
+            ];
+        }
+
+        // Real publish mode
+        $pageId = $this->getPageId();
+        $token = $this->getPageAccessToken();
+        $baseUrl = $this->getGraphBaseUrl();
+
+        if (!$post->publish_started_at) {
+            $post->increment('publish_attempts');
+            $post->update(['publish_started_at' => now()]);
+        }
+
+        // Check video size limit
+        $maxMb = (int) Setting::getValue('FACEBOOK_VIDEO_MAX_MB', env('FACEBOOK_VIDEO_MAX_MB', '100'));
+        $maxBytes = $maxMb * 1024 * 1024;
+        $contentLength = null;
+
+        try {
+            $headResponse = Http::timeout(5)->head($post->mediaItem->url);
+            if ($headResponse->successful()) {
+                $contentLength = $headResponse->header('Content-Length');
+            }
+        } catch (\Exception $e) {
+            Log::warning("Could not check video size for Post #{$post->id}: " . $e->getMessage());
+        }
+
+        if ($contentLength !== null) {
+            if ($contentLength > $maxBytes) {
+                $errMsg = "Video size exceeds maximum limit of {$maxMb}MB.";
+                $this->logAction($post, 'publish_video', false, [
+                    'page_id' => $pageId,
+                    'media_url' => $post->mediaItem->url,
+                ], null, $errMsg);
+
+                return [
+                    'success' => false,
+                    'message' => $errMsg,
+                ];
+            }
+        } else {
+            Log::warning("Could not determine video size for Post #{$post->id}. Proceeding with remote upload anyway.");
+        }
+
+        try {
+            $uploadMode = Setting::getValue('FACEBOOK_VIDEO_UPLOAD_MODE', env('FACEBOOK_VIDEO_UPLOAD_MODE', 'remote_url'));
+
+            if ($uploadMode === 'local_download') {
+                return $this->publishVideoPostLocal($post, $pageId, $token, $baseUrl);
+            }
+
+            // Default: remote_url
+            $response = Http::post("{$baseUrl}/{$pageId}/videos", [
+                'file_url' => $post->mediaItem->url,
+                'description' => $post->caption,
+                'access_token' => $token,
+            ]);
+
+            $responseData = $response->json();
+
+            $this->logAction($post, 'publish_video', $response->successful(), [
+                'page_id' => $pageId,
+                'endpoint' => "/{$pageId}/videos",
+                'media_url' => $post->mediaItem->url,
+                'caption_preview' => substr($post->caption, 0, 100),
+            ], $this->sanitizeResponse($responseData),
+                $response->failed() ? $this->parseGraphError($response) : null
+            );
+
+            if ($response->failed()) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to publish video post: ' . $this->parseGraphError($response),
+                ];
+            }
+
+            // Parse ID
+            $fbPostId = $responseData['post_id'] ?? $responseData['id'] ?? $responseData['video_id'] ?? null;
+
+            if (!$fbPostId) {
+                return [
+                    'success' => false,
+                    'message' => 'Facebook video published but no post id returned.',
+                ];
+            }
+
+            $post->update(['published_at' => now()]);
+
+            return [
+                'success' => true,
+                'facebook_post_id' => $fbPostId,
+                'message' => 'Video post published successfully.',
+            ];
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            $this->logAction($post, 'publish_video', false, [
+                'page_id' => $pageId,
+            ], null, 'Network error: ' . $e->getMessage());
+
+            return ['success' => false, 'message' => 'Network error: Could not connect to Facebook API.'];
+        }
+    }
+
+    /**
+     * Publish video using local download method - placeholder for Phase 2.2.
+     */
+    protected function publishVideoPostLocal(PostQueue $post, string $pageId, string $token, string $baseUrl): array
+    {
+        $tempPath = storage_path('app/temp/' . uniqid() . '.mp4');
+        if (!file_exists(dirname($tempPath))) {
+            mkdir(dirname($tempPath), 0755, true);
+        }
+
+        try {
+            $downloadResponse = Http::sink($tempPath)->get($post->mediaItem->url);
+            if ($downloadResponse->failed()) {
+                $errMsg = 'Failed to download video for local upload: HTTP ' . $downloadResponse->status();
+                $this->logAction($post, 'publish_video_local', false, [], null, $errMsg);
+                return [
+                    'success' => false,
+                    'message' => $errMsg,
+                ];
+            }
+
+            $response = Http::attach(
+                'source',
+                fopen($tempPath, 'r'),
+                'video.mp4'
+            )->post("{$baseUrl}/{$pageId}/videos", [
+                'description' => $post->caption,
+                'access_token' => $token,
+            ]);
+
+            $responseData = $response->json();
+
+            $this->logAction($post, 'publish_video_local', $response->successful(), [
+                'page_id' => $pageId,
+                'endpoint' => "/{$pageId}/videos (local)",
+                'caption_preview' => substr($post->caption, 0, 100),
+            ], $this->sanitizeResponse($responseData),
+                $response->failed() ? $this->parseGraphError($response) : null
+            );
+
+            if ($response->failed()) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to publish video post via local upload: ' . $this->parseGraphError($response),
+                ];
+            }
+
+            $fbPostId = $responseData['post_id'] ?? $responseData['id'] ?? $responseData['video_id'] ?? null;
+            if (!$fbPostId) {
+                return [
+                    'success' => false,
+                    'message' => 'Facebook video published via local upload but no post id returned.',
+                ];
+            }
+
+            $post->update(['published_at' => now()]);
+
+            return [
+                'success' => true,
+                'facebook_post_id' => $fbPostId,
+                'message' => 'Video post published successfully via local upload.',
+            ];
+        } catch (\Exception $e) {
+            $this->logAction($post, 'publish_video_local', false, [
+                'page_id' => $pageId,
+            ], null, 'Local upload error: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Local video upload failed: ' . $e->getMessage(),
+            ];
+        } finally {
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
+        }
     }
 
     /**
@@ -230,6 +433,30 @@ class FacebookPageService
      */
     public function publishPost(PostQueue $post): array
     {
+        $post->load('mediaItem');
+        $mediaType = $post->mediaItem?->type;
+
+        if ($mediaType === 'video' && Setting::getValue('FACEBOOK_PUBLISH_AS_REEL', env('FACEBOOK_PUBLISH_AS_REEL', 'false')) === 'true') {
+            $reelsService = new FacebookReelsService();
+            $result = $reelsService->publishReelPost($post);
+
+            if ($result['success']) {
+                $post->update([
+                    'status' => ($result['mode'] ?? '') === 'fake' ? 'published_fake' : 'published',
+                    'facebook_post_id' => $result['facebook_post_id'] ?? $post->facebook_post_id,
+                    'error_message' => null,
+                    'published_at' => now(),
+                ]);
+            } else {
+                $post->update([
+                    'status' => 'failed',
+                    'error_message' => $result['message'],
+                ]);
+            }
+
+            return $result;
+        }
+
         $mode = $this->getPublishMode();
 
         if ($mode === 'fake') {
@@ -244,6 +471,9 @@ class FacebookPageService
         $post->load('mediaItem');
         $mediaType = $post->mediaItem?->type;
 
+        $post->increment('publish_attempts');
+        $post->update(['publish_started_at' => now()]);
+
         try {
             if ($mediaType === 'photo') {
                 $result = $this->publishPhotoPost($post);
@@ -256,8 +486,9 @@ class FacebookPageService
             if ($result['success']) {
                 $post->update([
                     'status' => 'published',
-                    'facebook_post_id' => $result['facebook_post_id'] ?? null,
+                    'facebook_post_id' => $result['facebook_post_id'] ?? $post->facebook_post_id,
                     'error_message' => null,
+                    'published_at' => now(),
                 ]);
             } else {
                 $post->update([
@@ -284,16 +515,25 @@ class FacebookPageService
      */
     protected function fakePublish(PostQueue $post): array
     {
+        $post->load('mediaItem');
+        $type = $post->mediaItem?->type ?? 'text';
+        $timestamp = time();
+        $fakeId = "fake_{$type}_{$post->id}_{$timestamp}";
+
+        $post->increment('publish_attempts');
         $post->update([
+            'publish_started_at' => now(),
+            'published_at' => now(),
             'status' => 'published_fake',
+            'facebook_post_id' => $fakeId,
             'error_message' => null,
         ]);
 
-        $this->logAction($post, 'publish_due', true, [
+        $this->logAction($post, "publish_{$type}", true, [
             'caption_preview' => substr($post->caption, 0, 100),
-        ], ['mode' => 'fake', 'post_id' => $post->id], null);
+        ], ['mode' => 'fake', 'post_id' => $post->id, 'facebook_post_id' => $fakeId], null);
 
-        Log::info("Post #{$post->id} fake-published", [
+        Log::info("Post #{$post->id} fake-published as {$type}", [
             'post_id' => $post->id,
             'topic_id' => $post->topic_id,
             'scheduled_at' => $post->scheduled_at,
@@ -303,6 +543,7 @@ class FacebookPageService
             'success' => true,
             'message' => 'Post fake-published successfully (FACEBOOK_PUBLISH_MODE=fake).',
             'mode' => 'fake',
+            'facebook_post_id' => $fakeId,
         ];
     }
 
@@ -356,5 +597,114 @@ class FacebookPageService
         if (!$data) return null;
         unset($data['access_token']);
         return $data;
+    }
+
+    /**
+     * Sync page insights from Facebook Graph API or generate mock data in fake mode.
+     */
+    public function syncPageInsights(): array
+    {
+        $mode = $this->getPublishMode();
+        if ($mode === 'fake') {
+            // Generate mock insights for the last 7 days
+            $metrics = ['page_impressions', 'page_post_engagements', 'page_fans'];
+            $today = now();
+            for ($i = 0; $i < 7; $i++) {
+                $date = $today->copy()->subDays($i)->format('Y-m-d');
+                foreach ($metrics as $metric) {
+                    $val = match ($metric) {
+                        'page_impressions' => rand(500, 3000),
+                        'page_post_engagements' => rand(50, 400),
+                        'page_fans' => 1000 + ((7 - $i) * rand(2, 10)),
+                    };
+                    PageInsight::updateOrCreate(
+                        [
+                            'metric' => $metric,
+                            'period' => $metric === 'page_fans' ? 'lifetime' : 'day',
+                            'fetched_date' => $date,
+                        ],
+                        [
+                            'values_json' => ['value' => $val],
+                        ]
+                    );
+                }
+            }
+
+            $this->logAction(null, 'sync_insights', true, [], ['mode' => 'fake'], null);
+
+            return [
+                'success' => true,
+                'message' => 'Synced mock page insights successfully (fake mode).',
+                'mode' => 'fake',
+            ];
+        }
+
+        // Real mode
+        try {
+            $pageId = $this->getPageId();
+            $token = $this->getPageAccessToken();
+            $baseUrl = $this->getGraphBaseUrl();
+
+            $response = Http::get("{$baseUrl}/{$pageId}/insights", [
+                'metric' => 'page_impressions,page_post_engagements,page_fans',
+                'period' => 'day',
+                'access_token' => $token,
+            ]);
+
+            $this->logAction(null, 'sync_insights', $response->successful(), [
+                'page_id' => $pageId,
+            ], $response->successful() ? $response->json() : null,
+                $response->failed() ? $this->parseGraphError($response) : null
+            );
+
+            if ($response->failed()) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to sync insights: ' . $this->parseGraphError($response),
+                ];
+            }
+
+            $data = $response->json()['data'] ?? [];
+
+            foreach ($data as $metricItem) {
+                $name = $metricItem['name'] ?? null;
+                $period = $metricItem['period'] ?? 'day';
+                $values = $metricItem['values'] ?? [];
+
+                if (!$name) continue;
+
+                foreach ($values as $valItem) {
+                    $endTime = $valItem['end_time'] ?? null;
+                    $val = $valItem['value'] ?? 0;
+
+                    if (!$endTime) continue;
+
+                    // Format end_time to Y-m-d
+                    $date = date('Y-m-d', strtotime($endTime));
+
+                    PageInsight::updateOrCreate(
+                        [
+                            'metric' => $name,
+                            'period' => $period,
+                            'fetched_date' => $date,
+                        ],
+                        [
+                            'values_json' => ['value' => $val],
+                        ]
+                    );
+                }
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Synced Page Insights successfully from Facebook.',
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error syncing insights: ' . $e->getMessage(),
+            ];
+        }
     }
 }

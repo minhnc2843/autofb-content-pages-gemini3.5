@@ -5,6 +5,8 @@ const navItems = [
     { href: '/topics', label: 'Topics', icon: '📝' },
     { href: '/pexels', label: 'Pexels Search', icon: '🔍' },
     { href: '/queue', label: 'Queue', icon: '📋' },
+    { href: '/calendar', label: 'Calendar', icon: '🗓' },
+    { href: '/strategy', label: 'Strategy Engine', icon: '🎯' },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 

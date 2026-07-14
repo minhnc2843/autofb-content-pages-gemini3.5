@@ -1,7 +1,7 @@
 # Project Structure
 
 ```txt
-auto-fb-content-planner/
+auto-fb-content/
 ├── README.md
 ├── PROJECT_STRUCTURE.md
 ├── DEVELOPMENT_HISTORY.md

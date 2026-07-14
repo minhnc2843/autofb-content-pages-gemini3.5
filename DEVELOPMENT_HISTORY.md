@@ -84,3 +84,54 @@ Tích hợp Facebook Pages API để đăng thật lên Facebook Page với cơ 
 - Không đăng video thật (Phase 2.1).
 - Không gọi Gemini thật (Phase 4).
 - Không dùng browser automation.
+
+## Phase 2.1 — Facebook Video Publishing (2026-07-13)
+
+### Mục tiêu
+Hoàn thiện chức năng đăng VIDEO lên Facebook Page qua Meta Graph Video API.
+
+### Kết quả
+- ✅ **FacebookPageService** được mở rộng hỗ trợ video:
+  - `publishVideoPost(PostQueue $post)`: Thực hiện gọi Graph API đăng video qua remote_url.
+  - Hỗ trợ custom limits qua `FACEBOOK_VIDEO_MAX_MB`.
+  - Tự động kiểm tra file size trước khi upload bằng HTTP HEAD.
+  - Xử lý các loại ID trả về của Facebook để tìm post_id phù hợp.
+  - Placeholder cho `local_download` mode (ném ra ngoại lệ Phase 2.2).
+- ✅ **FacebookReelsService** skeleton: Chuẩn bị cấu trúc cho Reels publishing ở Phase tiếp theo.
+- ✅ **Pexels Video Parsing Optimization**: Tự động lọc video MP4 chất lượng cao <= 1080p từ Pexels.
+- ✅ **Queue UI**: Badge video, play link, modal confirmation tùy biến cho video.
+- ✅ **Settings UI**: Bổ sung thiết lập Video Upload Mode và Max MB.
+- ✅ **Database migration**: Cập nhật `posts_queue` với các cột `publish_started_at`, `published_at`, và `publish_attempts`.
+- ✅ **PublishDuePostsCommand**: Log thống kê bài đăng (Text, Photo, Video) chi tiết và ghi nhận thời điểm bắt đầu/hoàn thành đăng bài.
+- ✅ **65 tests passing** (172 assertions).
+- ✅ **npm run build** passing.
+
+### Tests thêm mới (16 tests)
+- FacebookPageServiceVideoTest: 10 tests
+- PublishDuePostsCommandTest (Video cases): 5 tests
+- PexelsServiceTest (video resolution validation): 1 test
+
+### Files tạo mới / sửa
+- database/migrations/2024_01_02_000002_add_publish_tracking_to_posts_queue.php (NEW)
+- app/Services/FacebookReelsService.php (NEW)
+- tests/Unit/FacebookPageServiceVideoTest.php (NEW)
+- app/Services/FacebookPageService.php (UPDATED)
+- app/Services/PexelsService.php (UPDATED)
+- app/Models/PostQueue.php (UPDATED)
+- app/Console/Commands/PublishDuePostsCommand.php (UPDATED)
+- app/Http/Controllers/QueueController.php (UPDATED)
+- app/Http/Controllers/SettingController.php (UPDATED)
+- resources/js/Pages/Queue/Index.jsx (UPDATED)
+- resources/js/Pages/Settings/Index.jsx (UPDATED)
+- resources/js/Components/MediaCard.jsx (UPDATED)
+- tests/Feature/PublishDuePostsCommandTest.php (UPDATED)
+- tests/Unit/PexelsServiceTest.php (UPDATED)
+- tests/Unit/FacebookPageServiceTest.php (UPDATED)
+- README.md (UPDATED)
+- CHANGELOG.md (UPDATED)
+
+### Không làm
+- Local multipart upload (lùi lại Phase 2.2).
+- Đăng Reels thật (Phase 2.1 chỉ có skeleton).
+- Gemini AI thật (Phase 4).
+- Browser automation.

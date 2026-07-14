@@ -207,4 +207,140 @@ class PublishDuePostsCommandTest extends TestCase
         $response->assertSessionHas('error');
         $this->assertEquals('draft', $post->fresh()->status);
     }
+
+    public function test_approved_due_video_post_fake_mode(): void
+    {
+        Setting::setValue('FACEBOOK_PUBLISH_MODE', 'fake');
+
+        $media = MediaItem::create([
+            'pexels_id' => 'v_fake_1',
+            'type' => 'video',
+            'url' => 'https://example.com/video.mp4',
+            'thumbnail_url' => 'https://example.com/thumb.jpg',
+        ]);
+
+        $post = PostQueue::create([
+            'media_item_id' => $media->id,
+            'caption' => 'Fake video publish due post',
+            'status' => 'approved',
+            'scheduled_at' => now()->subHour(),
+        ]);
+
+        $this->artisan('posts:publish-due')->assertSuccessful();
+
+        $this->assertEquals('published_fake', $post->fresh()->status);
+        $this->assertStringContainsString('fake_video', $post->fresh()->facebook_post_id);
+    }
+
+    public function test_approved_due_video_post_real_mode(): void
+    {
+        Setting::setValue('FACEBOOK_PAGE_ID', 'page_id_123');
+        Setting::setValue('FACEBOOK_PAGE_ACCESS_TOKEN', 'token_123', true);
+        Setting::setValue('FACEBOOK_PUBLISH_MODE', 'real');
+
+        Http::fake([
+            'graph.facebook.com/v25.0/page_id_123/videos' => Http::response([
+                'id' => 'video_id_999',
+            ], 200),
+            'https://example.com/video.mp4' => Http::response('', 200),
+        ]);
+
+        $media = MediaItem::create([
+            'pexels_id' => 'v_real_1',
+            'type' => 'video',
+            'url' => 'https://example.com/video.mp4',
+            'thumbnail_url' => 'https://example.com/thumb.jpg',
+        ]);
+
+        $post = PostQueue::create([
+            'media_item_id' => $media->id,
+            'caption' => 'Real video publish due post',
+            'status' => 'approved',
+            'scheduled_at' => now()->subHour(),
+        ]);
+
+        $this->artisan('posts:publish-due')->assertSuccessful();
+
+        $this->assertEquals('published', $post->fresh()->status);
+        $this->assertEquals('video_id_999', $post->fresh()->facebook_post_id);
+    }
+
+    public function test_video_post_not_due_is_not_published(): void
+    {
+        Setting::setValue('FACEBOOK_PUBLISH_MODE', 'fake');
+
+        $media = MediaItem::create([
+            'pexels_id' => 'v_future_1',
+            'type' => 'video',
+            'url' => 'https://example.com/video.mp4',
+            'thumbnail_url' => 'https://example.com/thumb.jpg',
+        ]);
+
+        $post = PostQueue::create([
+            'media_item_id' => $media->id,
+            'caption' => 'Future video',
+            'status' => 'approved',
+            'scheduled_at' => now()->addHour(),
+        ]);
+
+        $this->artisan('posts:publish-due')->assertSuccessful();
+
+        $this->assertEquals('approved', $post->fresh()->status);
+    }
+
+    public function test_draft_video_post_is_not_published(): void
+    {
+        Setting::setValue('FACEBOOK_PUBLISH_MODE', 'fake');
+
+        $media = MediaItem::create([
+            'pexels_id' => 'v_draft_1',
+            'type' => 'video',
+            'url' => 'https://example.com/video.mp4',
+            'thumbnail_url' => 'https://example.com/thumb.jpg',
+        ]);
+
+        $post = PostQueue::create([
+            'media_item_id' => $media->id,
+            'caption' => 'Draft video',
+            'status' => 'draft',
+            'scheduled_at' => now()->subHour(),
+        ]);
+
+        $this->artisan('posts:publish-due')->assertSuccessful();
+
+        $this->assertEquals('draft', $post->fresh()->status);
+    }
+
+    public function test_video_api_error_sets_failed(): void
+    {
+        Setting::setValue('FACEBOOK_PAGE_ID', 'page_id_123');
+        Setting::setValue('FACEBOOK_PAGE_ACCESS_TOKEN', 'token_123', true);
+        Setting::setValue('FACEBOOK_PUBLISH_MODE', 'real');
+
+        Http::fake([
+            'graph.facebook.com/v25.0/page_id_123/videos' => Http::response([
+                'error' => ['message' => 'Upload failed', 'type' => 'OAuthException'],
+            ], 400),
+            'https://example.com/video.mp4' => Http::response('', 200),
+        ]);
+
+        $media = MediaItem::create([
+            'pexels_id' => 'v_fail_1',
+            'type' => 'video',
+            'url' => 'https://example.com/video.mp4',
+            'thumbnail_url' => 'https://example.com/thumb.jpg',
+        ]);
+
+        $post = PostQueue::create([
+            'media_item_id' => $media->id,
+            'caption' => 'Failed video',
+            'status' => 'approved',
+            'scheduled_at' => now()->subHour(),
+        ]);
+
+        $this->artisan('posts:publish-due')->assertFailed();
+
+        $this->assertEquals('failed', $post->fresh()->status);
+        $this->assertNotEmpty($post->fresh()->error_message);
+    }
 }

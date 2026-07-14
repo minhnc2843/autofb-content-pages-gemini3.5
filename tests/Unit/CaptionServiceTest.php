@@ -3,10 +3,15 @@
 namespace Tests\Unit;
 
 use App\Services\CaptionService;
-use PHPUnit\Framework\TestCase;
+use App\Models\Setting;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
 
 class CaptionServiceTest extends TestCase
 {
+    use RefreshDatabase;
+
     private CaptionService $service;
 
     protected function setUp(): void
@@ -71,5 +76,47 @@ class CaptionServiceTest extends TestCase
         $caption = $this->service->generate($topic, $media, 'english');
 
         $this->assertStringContainsString('John Smith', $caption);
+    }
+
+    public function test_generate_with_ai_fallback_on_empty_api_key(): void
+    {
+        // Ensure no key is set
+        Setting::setValue('GEMINI_API_KEY', null);
+
+        $topic = ['name' => 'Forest', 'keyword' => 'forest'];
+        $media = ['type' => 'photo', 'photographer' => 'Jane Doe'];
+
+        // Should fallback to template-based generation
+        $caption = $this->service->generateWithAi($topic, $media, 'english');
+
+        $this->assertNotEmpty($caption);
+        $this->assertStringContainsString('forest', strtolower($caption));
+        $this->assertStringContainsString('Jane Doe', $caption);
+    }
+
+    public function test_generate_with_ai_calls_gemini_and_returns_caption(): void
+    {
+        Setting::setValue('GEMINI_API_KEY', 'valid-ai-key');
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                ['text' => 'This is a creative caption written by AI. Credit Jane Doe.']
+                            ]
+                        ]
+                    ]
+                ]
+            ], 200),
+        ]);
+
+        $topic = ['name' => 'Forest', 'keyword' => 'forest'];
+        $media = ['type' => 'photo', 'photographer' => 'Jane Doe'];
+
+        $caption = $this->service->generateWithAi($topic, $media, 'english', 'creative');
+
+        $this->assertEquals('This is a creative caption written by AI. Credit Jane Doe.', $caption);
     }
 }
