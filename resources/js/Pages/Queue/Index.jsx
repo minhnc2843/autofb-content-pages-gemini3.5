@@ -162,11 +162,11 @@ export default function Index({ posts, publishMode, filters, topics }) {
         });
     };
 
-    if (!posts || typeof posts !== 'object') {
+    if (!posts || !Array.isArray(pagination.data)) {
         return (
             <AppLayout title="Post Queue">
                 <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
-                    Queue data is not available. Please reload.
+                    Queue data is temporarily unavailable. Please reload.
                 </div>
             </AppLayout>
         );

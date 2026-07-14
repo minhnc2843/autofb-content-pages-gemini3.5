@@ -1,8 +1,12 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link, useForm, router } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '../../Components/AppLayout';
 import StatusBadge from '../../Components/StatusBadge';
 
 export default function Edit({ post }) {
+    const [approving, setApproving] = useState(false);
+    const [publishing, setPublishing] = useState(false);
+
     const { data, setData, put, processing, errors } = useForm({
         caption: post.caption || '',
         scheduled_at: post.scheduled_at
@@ -12,7 +16,44 @@ export default function Edit({ post }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(`/queue/${post.id}`);
+        put(`/queue/${post.id}`, { preserveScroll: true });
+    };
+
+    const handleSaveAndApprove = (e) => {
+        e.preventDefault();
+        router.put(`/queue/${post.id}`, {
+            caption: data.caption,
+            scheduled_at: data.scheduled_at,
+            approve_after_save: true
+        }, {
+            preserveScroll: true,
+        });
+    };
+
+    const handleApproveOnly = () => {
+        setApproving(true);
+        router.patch(`/queue/${post.id}/approve`, {}, {
+            preserveScroll: true,
+            onFinish: () => setApproving(false)
+        });
+    };
+
+    const handleUnapprove = () => {
+        setApproving(true);
+        router.patch(`/queue/${post.id}/unapprove`, {}, {
+            preserveScroll: true,
+            onFinish: () => setApproving(false)
+        });
+    };
+
+    const handlePublishNow = () => {
+        if (confirm("Are you sure you want to publish this post immediately to Facebook?")) {
+            setPublishing(true);
+            router.post(`/queue/${post.id}/publish-now`, {}, {
+                preserveScroll: true,
+                onFinish: () => setPublishing(false)
+            });
+        }
     };
 
     return (
@@ -27,12 +68,12 @@ export default function Edit({ post }) {
                         </div>
                         {post.status === 'draft' && (
                             <p className="text-xs text-amber-600 font-medium mt-1">
-                                ⚠️ <strong>Draft post:</strong> Draft posts will not auto-publish. Approve this post before scheduled time.
+                                ⚠️ This post will not publish until approved.
                             </p>
                         )}
                         {post.status === 'approved' && (
                             <p className="text-xs text-blue-600 font-medium mt-1">
-                                ℹ️ <strong>Approved post:</strong> Approved posts will publish when the scheduled publish command runs.
+                                ℹ️ This post can publish when scheduled command runs, or you can publish now.
                             </p>
                         )}
                     </div>
@@ -107,20 +148,98 @@ export default function Edit({ post }) {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-3 border-t border-gray-100 pt-4">
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-                            >
-                                {processing ? 'Saving...' : 'Save Changes'}
-                            </button>
-                            <Link
-                                href="/queue"
-                                className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                            >
-                                Cancel
-                            </Link>
+                        <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+                            {/* Published / Published Fake: view only */}
+                            {(post.status === 'published' || post.status === 'published_fake') ? (
+                                <Link
+                                    href="/queue"
+                                    className="rounded-lg border border-gray-300 bg-gray-50 px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                                >
+                                    Back to Queue
+                                </Link>
+                            ) : (
+                                <>
+                                    {/* Standard Save Changes */}
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                                    >
+                                        {processing ? 'Saving...' : 'Save Changes'}
+                                    </button>
+
+                                    {/* Draft status actions */}
+                                    {post.status === 'draft' && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveAndApprove}
+                                                className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 cursor-pointer"
+                                            >
+                                                Save & Approve
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={approving}
+                                                onClick={handleApproveOnly}
+                                                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                                            >
+                                                {approving ? 'Approving...' : 'Approve Now'}
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {/* Approved status actions */}
+                                    {post.status === 'approved' && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                disabled={publishing}
+                                                onClick={handlePublishNow}
+                                                className="rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50 cursor-pointer"
+                                            >
+                                                {publishing ? 'Publishing...' : '🚀 Publish Now'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={approving}
+                                                onClick={handleUnapprove}
+                                                className="rounded-lg bg-yellow-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-yellow-700 disabled:opacity-50 cursor-pointer"
+                                            >
+                                                {approving ? 'Unapproving...' : 'Unapprove'}
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {/* Failed status actions */}
+                                    {post.status === 'failed' && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveAndApprove}
+                                                className="rounded-lg bg-teal-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 cursor-pointer"
+                                            >
+                                                Save & Retry as Approved
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={approving}
+                                                onClick={handleApproveOnly}
+                                                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                                            >
+                                                {approving ? 'Approving...' : 'Approve Now'}
+                                            </button>
+                                        </>
+                                    )}
+
+                                    <Link
+                                        href="/queue"
+                                        className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </form>
 

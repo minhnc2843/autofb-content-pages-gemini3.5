@@ -157,35 +157,70 @@ class QueueController extends Controller
         $validated = $request->validate([
             'caption' => 'required|string',
             'scheduled_at' => 'nullable|date',
+            'approve_after_save' => 'nullable|boolean',
         ]);
 
-        $post->update($validated);
+        $post->update([
+            'caption' => $validated['caption'],
+            'scheduled_at' => $validated['scheduled_at'] ?? null,
+        ]);
 
-        return redirect()->route('queue.index')
-            ->with('success', 'Post updated successfully.');
-    }
+        $approveAfterSave = $request->boolean('approve_after_save');
 
-    public function approve(PostQueue $post)
-    {
-        if ($post->status !== 'draft') {
-            return redirect()->route('queue.index')
-                ->with('error', 'Only draft posts can be approved.');
+        if ($approveAfterSave) {
+            if (in_array($post->status, ['draft', 'failed'])) {
+                $post->status_change_reason = 'save_and_approve';
+                $post->update([
+                    'status' => 'approved',
+                    'error_message' => null,
+                ]);
+            }
         }
 
-        $post->update(['status' => 'approved']);
+        return redirect()
+            ->route('queue.edit', $post)
+            ->with('success', $approveAfterSave
+                ? 'Post saved and approved successfully.'
+                : 'Post saved successfully.'
+            );
+    }
+
+    public function approve(Request $request, PostQueue $post)
+    {
+        if (!in_array($post->status, ['draft', 'failed'])) {
+            return redirect()->route('queue.index')
+                ->with('error', 'Only draft or failed posts can be approved.');
+        }
+
+        $post->status_change_reason = 'manual_approve';
+        $post->update([
+            'status' => 'approved',
+            'error_message' => null,
+        ]);
+
+        if (str_contains($request->headers->get('referer', ''), '/edit')) {
+            return redirect()->route('queue.edit', $post)
+                ->with('success', 'Post approved successfully.');
+        }
 
         return redirect()->route('queue.index')
             ->with('success', 'Post approved successfully.');
     }
 
-    public function unapprove(PostQueue $post)
+    public function unapprove(Request $request, PostQueue $post)
     {
         if ($post->status !== 'approved') {
             return redirect()->route('queue.index')
                 ->with('error', 'Only approved posts can be unapproved.');
         }
 
+        $post->status_change_reason = 'manual_unapprove';
         $post->update(['status' => 'draft']);
+
+        if (str_contains($request->headers->get('referer', ''), '/edit')) {
+            return redirect()->route('queue.edit', $post)
+                ->with('success', 'Post unapproved, moved back to draft.');
+        }
 
         return redirect()->route('queue.index')
             ->with('success', 'Post unapproved, moved back to draft.');
@@ -207,7 +242,7 @@ class QueueController extends Controller
     /**
      * Publish a single approved post immediately.
      */
-    public function publishNow(PostQueue $post)
+    public function publishNow(Request $request, PostQueue $post)
     {
         if ($post->status !== 'approved') {
             return redirect()->route('queue.index')
@@ -223,13 +258,29 @@ class QueueController extends Controller
                 $modeLabel = ($result['mode'] ?? $service->getPublishMode()) === 'fake'
                     ? '(Fake mode — no real Facebook API call)'
                     : '(Published to Facebook)';
+
+                if (str_contains($request->headers->get('referer', ''), '/edit')) {
+                    return redirect()->route('queue.edit', $post)
+                        ->with('success', "Post published successfully! {$modeLabel}");
+                }
+
                 return redirect()->route('queue.index')
                     ->with('success', "Post published successfully! {$modeLabel}");
             } else {
+                if (str_contains($request->headers->get('referer', ''), '/edit')) {
+                    return redirect()->route('queue.edit', $post)
+                        ->with('error', "Publish failed: {$result['message']}");
+                }
+
                 return redirect()->route('queue.index')
                     ->with('error', "Publish failed: {$result['message']}");
             }
         } catch (\Exception $e) {
+            if (str_contains($request->headers->get('referer', ''), '/edit')) {
+                return redirect()->route('queue.edit', $post)
+                    ->with('error', "Publish error: {$e->getMessage()}");
+            }
+
             return redirect()->route('queue.index')
                 ->with('error', "Publish error: {$e->getMessage()}");
         }

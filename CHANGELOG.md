@@ -26,12 +26,14 @@
   - Redirected Pexels `createDraft` action to the edit screen of the newly created post, offering full media preview (with HTML5 video player and direct links) and immediate caption/schedule customization.
   - Registered `posts:publish-due` command to run every minute in Laravel Scheduler via `routes/console.php`.
   - Added global status warning note at the top of the monthly Calendar view.
+  - Integrated contextual action buttons (Save Changes, Save & Approve, Approve Now, Unapprove, Publish Now) in the Edit view, conditionally rendered based on post status.
+  - Restructured redirection logic: status update, unapprove, approve, and manual publish actions now redirect back to the Edit view when triggered from there using referer-based checks, rather than redirecting to Queue index.
 - **Gemini Gating**:
   - Gated GeminiService calls using `GEMINI_ENABLED` database settings to avoid unprompted page-load API hits.
   - Restructured Strategy Engine: `GET /strategy` now only reads the latest cached outline from database, delegating new generation exclusively to a new manual trigger `POST /strategy/generate` action.
 
 ### Tests Added
-- `AcceptanceFixPackTest`: Verifying Pexels redirect on draft creation, Queue page safety when empty or non-empty, approved status requirement to auto-publish, and Console Scheduler registration.
+- `AcceptanceFixPackTest`: Verifying Pexels redirect on draft creation, Queue page safety when empty or non-empty, approved status requirement to auto-publish, Console Scheduler registration, edit page loading, post updating redirects, Save & Approve transitions, and manual publish limits.
 - `SettingsSecurityTest`: Verifying settings encryption, database priority, and masked token safety.
 - `QueuePaginationTest`: Testing paginated collections and parameter persistence.
 - `QueueBatchSafetyTest`: Validating safe batch transitions, published posts isolation, and status history logs.

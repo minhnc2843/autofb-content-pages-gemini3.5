@@ -117,6 +117,27 @@ php artisan posts:publish-due
 php artisan posts:generate-daily
 ```
 
+### Draft Workflow
+
+Quy trình xuất bản nháp (Draft Workflow):
+1. **Create Draft Post**: Tạo bài viết nháp từ Pexels (Media Search) hoặc tạo mới.
+2. **Edit caption/schedule**: Chuyển tới màn hình chỉnh sửa nội dung bài viết và đặt thời gian hẹn giờ.
+3. **Click Save & Approve**: Nhấp chọn "Save & Approve" hoặc "Approve Now" để phê duyệt bài viết (chuyển trạng thái sang `approved`).
+4. **Run scheduler or Publish Now**: Bài viết đã duyệt sẽ được xuất bản qua scheduler tự động hoặc có thể bấm xuất bản ngay qua nút "Publish Now".
+5. **Only approved posts can publish**: Hệ thống chỉ tiến hành xuất bản những bài đăng đã qua kiểm duyệt (`approved`).
+
+**⚠️ Quy tắc xuất bản:**
+- Bài viết ở trạng thái `draft` sẽ **không bao giờ** tự động đăng.
+- Lịch đăng bài tự động (`approved` posts) chỉ chạy khi scheduler `posts:publish-due` hoạt động.
+- Chạy scheduler ở local:
+  ```bash
+  php artisan schedule:work
+  ```
+- Kiểm tra & xuất bản thủ công bài đến giờ:
+  ```bash
+  php artisan posts:publish-due
+  ```
+
 ### Automatic Publishing Scheduler
 
 Để bài viết đã được duyệt (`approved`) tự động đăng lên Facebook Page khi đến giờ hẹn, Laravel Scheduler phải được cấu hình chạy.

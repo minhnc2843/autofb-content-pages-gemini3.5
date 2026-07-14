@@ -110,7 +110,7 @@ class PostQueueTest extends TestCase
             'scheduled_at' => '2025-12-31 10:00',
         ]);
 
-        $response->assertRedirect('/queue');
+        $response->assertRedirect(route('queue.edit', $post));
         $this->assertDatabaseHas('posts_queue', [
             'id' => $post->id,
             'caption' => 'New updated caption',
