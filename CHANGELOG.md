@@ -20,6 +20,7 @@
   - Leveraged Pexels integration fallback in scheduler if cached elements run low.
   - Corrected month/year fallbacks to reset out-of-bound ranges.
   - Warning checks for missing daily slots (lower than 3 posts) now check today or future dates, completely ignoring past history.
+  - Optimized duplicate caption checks (`isCaptionDuplicate`) in `DuplicateProtectionService` to query database candidates using `LENGTH(caption)` bounds instead of loading the entire table.
 - **Gemini Gating**:
   - Gated GeminiService calls using `GEMINI_ENABLED` database settings to avoid unprompted page-load API hits.
   - Restructured Strategy Engine: `GET /strategy` now only reads the latest cached outline from database, delegating new generation exclusively to a new manual trigger `POST /strategy/generate` action.
@@ -29,7 +30,8 @@
 - `QueuePaginationTest`: Testing paginated collections and parameter persistence.
 - `QueueBatchSafetyTest`: Validating safe batch transitions, published posts isolation, and status history logs.
 - `CalendarValidationTest`: Testing boundary limits, all-filters, and future-only warnings.
-- `GeminiGatingTest`: Verifying AI calls gating and strategy generation isolation.
+- `GeminiGatingTest`: Verifying AI calls gating, strategy generation redirects when disabled, and strategy generation isolation.
+- `GeminiServiceTest`: Expanded unit tests to cover `analyzeMedia`, `auditPage`, and `generateStrategy` methods.
 
 ---
 

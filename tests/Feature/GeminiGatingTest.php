@@ -102,4 +102,20 @@ class GeminiGatingTest extends TestCase
         // Confirm Gemini API was hit
         Http::assertSentCount(1);
     }
+
+    public function test_post_strategy_generate_redirects_when_disabled(): void
+    {
+        Setting::setValue('GEMINI_ENABLED', 'false');
+        Topic::create(['name' => 'Pets', 'keyword' => 'cat']);
+
+        Http::fake();
+
+        $response = $this->post('/strategy/generate');
+
+        $response->assertRedirect('/strategy');
+        $response->assertSessionHas('error');
+
+        // Confirm Gemini API was not hit
+        Http::assertNothingSent();
+    }
 }

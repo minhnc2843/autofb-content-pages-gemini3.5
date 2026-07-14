@@ -39,15 +39,29 @@ class DuplicateProtectionService
         return $this->isMediaRecentlyUsed($mediaItemId, $withinDays);
     }
 
-    /**
-     * Check if a caption is a duplicate after normalization.
-     */
     public function isCaptionDuplicate(string $caption): bool
     {
         $normalized = $this->normalizeCaption($caption);
-        return PostQueue::select('caption')->get()->contains(function ($post) use ($normalized) {
-            return $this->normalizeCaption($post->caption) === $normalized;
-        });
+
+        // 1. Quick exact match check (highly optimized)
+        if (PostQueue::where('caption', $caption)->exists()) {
+            return true;
+        }
+
+        // 2. Fetch only candidates with similar length to avoid loading entire DB
+        $normalizedLength = mb_strlen($normalized);
+        $candidates = PostQueue::select('caption')
+            ->whereRaw('LENGTH(caption) >= ?', [$normalizedLength])
+            ->whereRaw('LENGTH(caption) <= ?', [$normalizedLength + 100])
+            ->get();
+
+        foreach ($candidates as $post) {
+            if ($this->normalizeCaption($post->caption) === $normalized) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

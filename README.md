@@ -140,20 +140,21 @@ Mọi lần publish (fake/real) đều được log vào bảng `post_publish_lo
 php artisan test
 ```
 
-## Phase hiện tại: Phase 2.1
+## Phase hiện tại: Completed MVP (Phase 6 + Acceptance Fix Pack)
 
-- ✅ Dashboard với thống kê (draft/approved/published/published_fake/failed count)
+- ✅ Dashboard nâng cấp (Coverage score, missing slot indicators, upcoming queue lists, quick actions)
 - ✅ Topics CRUD + toggle active
 - ✅ Pexels Search (tối ưu hóa chọn video MP4 dưới 1080p, có duration badge, thumbnail cho video)
-- ✅ Queue management (approve/unapprove/edit/delete)
+- ✅ Queue management (approve/unapprove/edit/delete/reschedule) + Phân trang (Pagination)
 - ✅ **Publish Now** cho bài approved (hỗ trợ xác nhận modal chi tiết cho video)
 - ✅ **Fake/Real publish mode**
 - ✅ **Facebook Graph API**: text post + photo post + **video post**
 - ✅ **Validate Facebook Config**
 - ✅ **Publish logs** (post_publish_logs)
-- ✅ Settings page với đầy đủ Facebook Publishing và Video configs
-- ✅ Console commands (generate-daily, publish-due)
-- ⏳ Video local multipart upload (Phase 2.2 placeholder)
-- ⏳ Reels publishing skeleton (FacebookReelsService)
-- ❌ Gemini AI (Phase 4)
+- ✅ Settings page với đầy đủ Facebook Publishing, Video configs và **Mã hóa secrets**
+- ✅ Console commands (generate-daily, publish-due, generate-calendar)
+- ✅ Lịch đăng bài monthly grid view + **Cảnh báo thiếu slot đăng bài**
+- ✅ Chống trùng lặp (Duplicate protection): chống trùng ảnh/video 30 ngày, trùng slot, và trùng caption (tối ưu hóa SQLite/MySQL LENGTH queries)
+- ✅ Tích hợp Gemini AI tạo caption variants, chấm điểm nội dung, Page Audit, và Weekly Strategy Engine (hỗ trợ gating `GEMINI_ENABLED` và nút bấm thủ công)
+- ✅ **122 tests passed** (100% assertions)
 - ❌ Browser automation (không bao giờ)
