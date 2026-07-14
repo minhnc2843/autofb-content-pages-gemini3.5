@@ -57,6 +57,8 @@ class PexelsServiceTest extends TestCase
         $this->assertCount(1, $result['data']);
         $this->assertEquals('12345', $result['data'][0]['pexels_id']);
         $this->assertEquals('photo', $result['data'][0]['type']);
+        $this->assertEquals('https://images.pexels.com/photos/12345/large.jpg?auto=compress&cs=tinysrgb&w=1600', $result['data'][0]['url']);
+        $this->assertEquals('https://images.pexels.com/photos/12345/medium.jpg?auto=compress&cs=tinysrgb&w=600', $result['data'][0]['thumbnail_url']);
         $this->assertEquals('John Doe', $result['data'][0]['photographer']);
         $this->assertEquals(1920, $result['data'][0]['width']);
     }

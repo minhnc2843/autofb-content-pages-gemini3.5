@@ -50,6 +50,13 @@ class DebugPostPublishCommand extends Command
             if (!$post->mediaItem?->url) {
                 $this->warn("⚠️  Warning: Media item is missing a source URL.");
             } else {
+                if ($mediaType === 'photo' && str_contains($post->mediaItem->url, 'images.pexels.com') && !str_contains($post->mediaItem->url, 'auto=compress')) {
+                    $this->warn("⚠️  Warning: Photo URL is not optimized for Facebook publish.");
+                    $base = strtok($post->mediaItem->url, '?');
+                    $suggestedUrl = $base . '?auto=compress&cs=tinysrgb&w=1600';
+                    $this->line("  Suggested optimized URL: " . $suggestedUrl);
+                }
+
                 // Test accessibility of media url using HTTP HEAD
                 try {
                     $response = Http::timeout(5)->head($post->mediaItem->url);

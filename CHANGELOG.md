@@ -28,11 +28,16 @@
   - Added global status warning note at the top of the monthly Calendar view.
   - Integrated contextual action buttons (Save Changes, Save & Approve, Approve Now, Unapprove, Publish Now) in the Edit view, conditionally rendered based on post status.
   - Restructured redirection logic: status update, unapprove, approve, and manual publish actions now redirect back to the Edit view when triggered from there using referer-based checks, rather than redirecting to Queue index.
+  - Tối ưu hóa URL ảnh tự động từ Pexels (`w=1600` cho ảnh chính, `w=600` cho ảnh thumbnail) nhằm giải quyết triệt để lỗi Graph API Code 1.
+  - Xây dựng cơ chế auto-retry nén thêm ảnh về kích thước `w=1200` nếu lần publish đầu tiên gặp mã lỗi 1 hoặc cảnh báo "reduce the amount of data".
+  - Thêm lệnh batch-optimize `media:optimize-pexels-urls` để chuyển đổi URL ảnh cũ trong database.
 - **Gemini Gating**:
   - Gated GeminiService calls using `GEMINI_ENABLED` database settings to avoid unprompted page-load API hits.
   - Restructured Strategy Engine: `GET /strategy` now only reads the latest cached outline from database, delegating new generation exclusively to a new manual trigger `POST /strategy/generate` action.
 
 ### Tests Added
+- `PhotoPublishRetryTest`: Testing retry fallback with heavy compression and media optimize batch command.
+- `PublishFailureDiagnosticsTest`: Testing failures alerts, 5 logs timeline, and retry status transitions.
 - `AcceptanceFixPackTest`: Verifying Pexels redirect on draft creation, Queue page safety when empty or non-empty, approved status requirement to auto-publish, Console Scheduler registration, edit page loading, post updating redirects, Save & Approve transitions, and manual publish limits.
 - `SettingsSecurityTest`: Verifying settings encryption, database priority, and masked token safety.
 - `QueuePaginationTest`: Testing paginated collections and parameter persistence.

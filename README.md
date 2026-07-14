@@ -199,6 +199,16 @@ Khi một bài viết ở trạng thái `approved` chuyển sang `failed`, hệ 
 - `FACEBOOK_PUBLISH_MODE=fake` dùng để giả lập toàn bộ quá trình đăng (không gọi API thật).
 - `FACEBOOK_PUBLISH_MODE=real` yêu cầu Page Access Token có đủ các quyền đăng bài (`pages_manage_posts`) và media URL phải ở dạng public để Facebook có thể tải về.
 
+### Facebook Photo Publish and Pexels Image Optimization
+
+- **Không dùng Pexels original**: Ứng dụng không sử dụng ảnh gốc (original) từ Pexels cho việc xuất bản lên Facebook Page, vì kích thước ảnh gốc thường quá lớn gây ra lỗi Graph API code 1 (`Please reduce the amount of data...`).
+- **Tối ưu hóa ảnh tự động**: Ứng dụng tự động điều chỉnh ảnh về kích thước nhỏ và nén tối ưu hơn (`?auto=compress&cs=tinysrgb&w=1600`) cho trường `media_items.url` khi lấy dữ liệu từ Pexels.
+- **Cơ chế Retry Fallback**: Khi publish ảnh thất bại với lỗi code 1, hệ thống sẽ tự động thực hiện nén thêm ảnh xuống độ rộng 1200px (`w=1200`) và thực hiện gửi lại request đăng ảnh lên Facebook một lần nữa.
+- **Tối ưu hóa ảnh cũ**: Nếu hệ thống của bạn đã có sẵn các dữ liệu ảnh cũ chưa được nén, bạn có thể chạy command sau để cập nhật toàn bộ URL ảnh cũ trong database sang URL đã tối ưu:
+  ```bash
+  php artisan media:optimize-pexels-urls
+  ```
+
 ## Security
 
 - ❌ Không log access token
@@ -229,5 +239,5 @@ php artisan test
 - ↳ Lịch đăng bài monthly grid view + **Cảnh báo thiếu slot đăng bài**
 - ↳ Chống trùng lặp (Duplicate protection): chống trùng ảnh/video 30 ngày, trùng slot, và trùng caption (tối ưu hóa SQLite/MySQL LENGTH queries)
 - ↳ Tích hợp Gemini AI tạo caption variants, chấm điểm nội dung, Page Audit, và Weekly Strategy Engine (hỗ trợ gating `GEMINI_ENABLED` và nút bấm thủ công)
-- ↳ **140 tests passed** (100% assertions)
+- ↳ **142 tests passed** (100% assertions)
 - ❌ Browser automation (không bao giờ)

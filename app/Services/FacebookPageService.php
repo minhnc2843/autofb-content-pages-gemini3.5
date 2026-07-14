@@ -168,33 +168,82 @@ class FacebookPageService
         $token = $this->getPageAccessToken();
         $baseUrl = $this->getGraphBaseUrl();
 
+        $photoUrl = $this->getOptimizedPhotoUrl($post->mediaItem->url, 1600);
+
         try {
             $response = Http::post("{$baseUrl}/{$pageId}/photos", [
-                'url' => $post->mediaItem->url,
+                'url' => $photoUrl,
                 'caption' => $post->caption,
                 'published' => true,
                 'access_token' => $token,
             ]);
 
             $responseData = $response->json();
+            $errorMsg = $response->failed() ? $this->parseGraphError($response) : null;
 
             $this->logAction($post, 'publish_photo', $response->successful(), [
                 'page_id' => $pageId,
                 'endpoint' => "/{$pageId}/photos",
-                'media_url' => $post->mediaItem->url,
+                'media_url' => $photoUrl,
                 'caption_preview' => substr($post->caption, 0, 100),
-            ], $this->sanitizeResponse($responseData),
-                $response->failed() ? $this->parseGraphError($response) : null
-            );
+            ], $this->sanitizeResponse($responseData), $errorMsg);
+
+            // Check if failed and matches fallback condition:
+            // "reduce the amount of data" or code 1
+            $shouldRetry = false;
+            if ($response->failed()) {
+                $errorData = $responseData['error'] ?? [];
+                $code = $errorData['code'] ?? null;
+                $message = $errorData['message'] ?? '';
+                if ($code == 1 || str_contains(strtolower($message), 'reduce the amount of data')) {
+                    $shouldRetry = true;
+                }
+            }
+
+            if ($shouldRetry) {
+                // Retry with width 1200
+                $retryUrl = $this->getOptimizedPhotoUrl($post->mediaItem->url, 1200);
+
+                $retryResponse = Http::post("{$baseUrl}/{$pageId}/photos", [
+                    'url' => $retryUrl,
+                    'caption' => $post->caption,
+                    'published' => true,
+                    'access_token' => $token,
+                ]);
+
+                $retryResponseData = $retryResponse->json();
+                $retryErrorMsg = $retryResponse->failed() ? $this->parseGraphError($retryResponse) : null;
+
+                $this->logAction($post, 'publish_photo_retry_compressed', $retryResponse->successful(), [
+                    'page_id' => $pageId,
+                    'endpoint' => "/{$pageId}/photos",
+                    'media_url' => $retryUrl,
+                    'caption_preview' => substr($post->caption, 0, 100),
+                ], $this->sanitizeResponse($retryResponseData), $retryErrorMsg);
+
+                if ($retryResponse->successful()) {
+                    $fbPostId = $retryResponseData['post_id'] ?? $retryResponseData['id'] ?? null;
+                    return [
+                        'success' => true,
+                        'facebook_post_id' => $fbPostId,
+                        'message' => 'Photo post published successfully after compressed retry.',
+                    ];
+                }
+
+                // Failed retry: return both errors
+                return [
+                    'success' => false,
+                    'message' => "Failed to publish photo post. First attempt: {$errorMsg}. Retry compressed: {$retryErrorMsg}",
+                ];
+            }
 
             if ($response->failed()) {
                 return [
                     'success' => false,
-                    'message' => 'Failed to publish photo post: ' . $this->parseGraphError($response),
+                    'message' => 'Failed to publish photo post: ' . $errorMsg,
                 ];
             }
 
-            // Facebook returns 'id' for photos, or 'post_id'
             $fbPostId = $responseData['post_id'] ?? $responseData['id'] ?? null;
 
             return [
@@ -593,14 +642,23 @@ class FacebookPageService
         );
     }
 
-    /**
-     * Sanitize response to remove any sensitive data before logging.
-     */
     protected function sanitizeResponse(?array $data): ?array
     {
         if (!$data) return null;
         unset($data['access_token']);
         return $data;
+    }
+
+    /**
+     * Get optimized compressed photo URL for Facebook publishing.
+     */
+    protected function getOptimizedPhotoUrl(string $url, int $width = 1600): string
+    {
+        if (str_contains($url, 'images.pexels.com')) {
+            $base = strtok($url, '?');
+            return $base . '?auto=compress&cs=tinysrgb&w=' . $width;
+        }
+        return $url;
     }
 
     /**

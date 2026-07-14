@@ -46,8 +46,14 @@ class PexelsService
                 return [
                     'pexels_id' => (string) $photo['id'],
                     'type' => 'photo',
-                    'url' => $photo['src']['original'] ?? $photo['src']['large'],
-                    'thumbnail_url' => $photo['src']['medium'] ?? $photo['src']['small'],
+                    'url' => $this->optimizePexelsPhotoUrl(
+                        $photo['src']['large2x'] ?? $photo['src']['large'] ?? $photo['src']['medium'] ?? $photo['src']['original'] ?? null,
+                        1600
+                    ),
+                    'thumbnail_url' => $this->optimizePexelsPhotoUrl(
+                        $photo['src']['medium'] ?? $photo['src']['small'] ?? null,
+                        600
+                    ),
                     'width' => $photo['width'] ?? null,
                     'height' => $photo['height'] ?? null,
                     'duration' => null,
@@ -187,5 +193,20 @@ class PexelsService
                 'Pexels API key is not configured. Please set PEXELS_API_KEY in your .env file or in Settings.'
             );
         }
+    }
+
+    /**
+     * Optimize Pexels photo URLs for Facebook publishing.
+     */
+    protected function optimizePexelsPhotoUrl(?string $url, int $width = 1600): ?string
+    {
+        if (!$url) return null;
+
+        if (!str_contains($url, 'images.pexels.com')) {
+            return $url;
+        }
+
+        $base = strtok($url, '?');
+        return $base . '?auto=compress&cs=tinysrgb&w=' . $width;
     }
 }
