@@ -17,6 +17,7 @@ class GeminiServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Setting::setValue('GEMINI_ENABLED', 'true');
         $this->service = new GeminiService();
     }
 

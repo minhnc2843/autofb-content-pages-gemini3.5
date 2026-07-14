@@ -21,6 +21,9 @@ class SettingController extends Controller
             'FACEBOOK_VIDEO_UPLOAD_MODE',
             'FACEBOOK_VIDEO_MAX_MB',
             'FACEBOOK_PUBLISH_AS_REEL',
+            'GEMINI_ENABLED',
+            'GEMINI_MODEL',
+            'GEMINI_CAPTION_MODE',
         ];
 
         $settings = [];
@@ -42,6 +45,9 @@ class SettingController extends Controller
         $settings['facebook_video_upload_mode'] = $settings['facebook_video_upload_mode'] ?: env('FACEBOOK_VIDEO_UPLOAD_MODE', 'remote_url');
         $settings['facebook_video_max_mb'] = $settings['facebook_video_max_mb'] ?: env('FACEBOOK_VIDEO_MAX_MB', '100');
         $settings['facebook_publish_as_reel'] = $settings['facebook_publish_as_reel'] ?: env('FACEBOOK_PUBLISH_AS_REEL', 'false');
+        $settings['gemini_enabled'] = $settings['gemini_enabled'] ?: env('GEMINI_ENABLED', 'false');
+        $settings['gemini_model'] = $settings['gemini_model'] ?: env('GEMINI_MODEL', 'gemini-2.5-flash');
+        $settings['gemini_caption_mode'] = $settings['gemini_caption_mode'] ?: env('GEMINI_CAPTION_MODE', 'template');
 
         return Inertia::render('Settings/Index', [
             'settings' => $settings,
@@ -60,6 +66,9 @@ class SettingController extends Controller
             'facebook_video_upload_mode' => 'nullable|in:remote_url,local_download',
             'facebook_video_max_mb' => 'nullable|integer|min:1|max:5000',
             'facebook_publish_as_reel' => 'nullable|in:true,false',
+            'gemini_enabled' => 'nullable|in:true,false',
+            'gemini_model' => 'nullable|string|max:255',
+            'gemini_caption_mode' => 'nullable|in:template,ai',
         ]);
 
         $secretFields = ['pexels_api_key', 'facebook_page_access_token', 'gemini_api_key'];
@@ -74,6 +83,9 @@ class SettingController extends Controller
             'FACEBOOK_VIDEO_UPLOAD_MODE' => $request->input('facebook_video_upload_mode'),
             'FACEBOOK_VIDEO_MAX_MB' => $request->input('facebook_video_max_mb'),
             'FACEBOOK_PUBLISH_AS_REEL' => $request->input('facebook_publish_as_reel'),
+            'GEMINI_ENABLED' => $request->input('gemini_enabled'),
+            'GEMINI_MODEL' => $request->input('gemini_model'),
+            'GEMINI_CAPTION_MODE' => $request->input('gemini_caption_mode'),
         ];
 
         foreach ($fields as $key => $value) {

@@ -1,5 +1,38 @@
 # Changelog
 
+## [Acceptance Fix Pack] — 2026-07-14
+
+### Added
+- **Settings Security & Encrypted secrets**:
+  - Automatically encrypts secret settings (API keys, Access Tokens) in the SQLite database.
+  - Prioritizes database setting entries over local env variables inside testing and production runtime configurations.
+  - Safe-guard mechanism avoiding overwriting real credentials when frontend transmits masked characters (`••••••••`).
+- **Pagination & Filters**:
+  - Implemented Eloquent-level database pagination (`paginate(20)`) for queue entries.
+  - Rendered pagination navigation links in Inertia React queue view.
+  - Restrained select-all checkbox to apply only to records visible on the current page.
+  - Optimized status & topic filter drop-downs: selecting "all" now clears the filtering constraints instead of failing.
+- **Safe Batch Actions**:
+  - Restricted state transitions: approving restricted to `draft`/`failed`, unapproving restricted to `approved` to `draft`, and deleting restricted strictly to `draft` posts.
+  - Enabled reason logging column in `post_status_histories` mapping the batch action's name.
+- **Calendar & Scheduler Upgrades**:
+  - Unified auto-schedule parameters in `ContentCalendarService` matching slots list, topics, media type, and start dates.
+  - Leveraged Pexels integration fallback in scheduler if cached elements run low.
+  - Corrected month/year fallbacks to reset out-of-bound ranges.
+  - Warning checks for missing daily slots (lower than 3 posts) now check today or future dates, completely ignoring past history.
+- **Gemini Gating**:
+  - Gated GeminiService calls using `GEMINI_ENABLED` database settings to avoid unprompted page-load API hits.
+  - Restructured Strategy Engine: `GET /strategy` now only reads the latest cached outline from database, delegating new generation exclusively to a new manual trigger `POST /strategy/generate` action.
+
+### Tests Added
+- `SettingsSecurityTest`: Verifying settings encryption, database priority, and masked token safety.
+- `QueuePaginationTest`: Testing paginated collections and parameter persistence.
+- `QueueBatchSafetyTest`: Validating safe batch transitions, published posts isolation, and status history logs.
+- `CalendarValidationTest`: Testing boundary limits, all-filters, and future-only warnings.
+- `GeminiGatingTest`: Verifying AI calls gating and strategy generation isolation.
+
+---
+
 ## [Phase 2.1] — 2026-07-13
 
 ### Added

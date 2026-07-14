@@ -25,33 +25,9 @@ class Setting extends Model
      */
     public static function getValue(string $key, $default = null): ?string
     {
-        // Prioritize database over env during tests to allow setting mocks to take effect
-        if (app()->runningUnitTests()) {
-            $setting = static::where('key', $key)->first();
-            if ($setting !== null) {
-                if ($setting->is_secret && !empty($setting->value)) {
-                    try {
-                        return \Illuminate\Support\Facades\Crypt::decryptString($setting->value);
-                    } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-                        return $setting->value;
-                    }
-                }
-                return $setting->value;
-            }
-
-            $envValue = env(strtoupper($key));
-            return !empty($envValue) ? $envValue : $default;
-        }
-
-        // Check .env first in non-test environments
-        $envValue = env(strtoupper($key));
-        if (!empty($envValue)) {
-            return $envValue;
-        }
-
-        // Then check database
+        // Prioritize database over env
         $setting = static::where('key', $key)->first();
-        if ($setting) {
+        if ($setting !== null) {
             if ($setting->is_secret && !empty($setting->value)) {
                 try {
                     return \Illuminate\Support\Facades\Crypt::decryptString($setting->value);
@@ -61,6 +37,13 @@ class Setting extends Model
             }
             return $setting->value;
         }
+
+        // Fallback to env
+        $envValue = env(strtoupper($key));
+        if ($envValue !== null && $envValue !== '') {
+            return $envValue;
+        }
+
         return $default;
     }
 

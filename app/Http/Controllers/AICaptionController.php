@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\MediaItem;
 use App\Models\Topic;
 use App\Services\AI\GeminiService;
-use App\Services\Setting;
 use Illuminate\Http\Request;
 
 class AICaptionController extends Controller
@@ -31,6 +30,17 @@ class AICaptionController extends Controller
         $preset = $validated['preset'] ?? 'facebook_engagement';
 
         $gemini = new GeminiService();
+        if (!$gemini->isEnabled()) {
+            return response()->json([
+                'error' => 'Gemini AI is disabled. Please enable it in Settings.',
+                'variants' => [
+                    "Variant 1 (Local template): Beautiful shot of " . ($topic->name ?? 'nature'),
+                    "Variant 2 (Local template): Loving this " . ($topic->keyword ?? 'nature') . " vibe!",
+                    "Variant 3 (Local template): Stunning view captured by " . ($media['photographer'] ?? 'photographer')
+                ]
+            ]);
+        }
+
         $result = $gemini->generateCaptionVariants($topic->toArray(), $media, $language, $preset);
 
         return response()->json($result);

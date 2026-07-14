@@ -72,7 +72,12 @@ class QueueController extends Controller
                 break;
         }
 
-        $posts = $query->get()->map(function ($post) {
+        $perPage = min(100, intval($request->input('per_page', 20)));
+        if ($perPage < 1) {
+            $perPage = 20;
+        }
+
+        $posts = $query->paginate($perPage)->through(function ($post) {
             // Get the latest Gemini analysis
             $analysis = $post->aiAnalyses
                 ->where('provider', 'gemini')
@@ -99,6 +104,8 @@ class QueueController extends Controller
                 ] : null,
             ];
         });
+
+        $posts->withQueryString();
 
         $topics = Topic::all()->map(function ($t) {
             return [
@@ -228,12 +235,14 @@ class QueueController extends Controller
         }
     }
 
-    /**
-     * Analyze and score a post using Gemini AI.
-     */
     public function analyze(PostQueue $post)
     {
         $gemini = new \App\Services\AI\GeminiService();
+
+        if (!$gemini->isEnabled()) {
+            return redirect()->route('queue.index')
+                ->with('error', 'Gemini AI features are currently disabled. Please enable it in Settings.');
+        }
 
         // Check if API Key is set
         if (empty($gemini->getApiKey())) {
@@ -295,9 +304,6 @@ class QueueController extends Controller
         }
     }
 
-    /**
-     * Handle batch actions on multiple queue posts.
-     */
     public function batchAction(Request $request)
     {
         $validated = $request->validate([
@@ -313,36 +319,48 @@ class QueueController extends Controller
 
         $posts = PostQueue::whereIn('id', $ids)->get();
         $count = 0;
+        $skipped = 0;
 
         switch ($action) {
             case 'approve':
                 foreach ($posts as $post) {
-                    if ($post->status === 'draft') {
-                        $post->update(['status' => 'approved']);
+                    if (in_array($post->status, ['draft', 'failed'])) {
+                        $post->status_change_reason = 'batch_approve';
+                        $post->update([
+                            'status' => 'approved',
+                            'error_message' => null,
+                        ]);
                         $count++;
+                    } else {
+                        $skipped++;
                     }
                 }
-                $message = "Approved {$count} draft posts.";
+                $message = "Approved {$count} posts. (Skipped {$skipped} non-draft/failed posts)";
                 break;
 
             case 'unapprove':
                 foreach ($posts as $post) {
                     if ($post->status === 'approved') {
+                        $post->status_change_reason = 'batch_unapprove';
                         $post->update(['status' => 'draft']);
                         $count++;
+                    } else {
+                        $skipped++;
                     }
                 }
-                $message = "Moved {$count} approved posts back to draft.";
+                $message = "Moved {$count} approved posts back to draft. (Skipped {$skipped} posts)";
                 break;
 
             case 'delete':
                 foreach ($posts as $post) {
-                    if (in_array($post->status, ['draft', 'failed'])) {
+                    if ($post->status === 'draft') {
                         $post->delete();
                         $count++;
+                    } else {
+                        $skipped++;
                     }
                 }
-                $message = "Deleted {$count} draft/failed posts.";
+                $message = "Deleted {$count} draft posts. (Skipped {$skipped} non-draft posts)";
                 break;
 
             case 'reschedule':
@@ -353,33 +371,41 @@ class QueueController extends Controller
                     if (!in_array($post->status, ['published', 'published_fake'])) {
                         $post->update(['scheduled_at' => $scheduledAt]);
                         $count++;
+                    } else {
+                        $skipped++;
                     }
                 }
-                $message = "Rescheduled {$count} posts to " . date('Y-m-d H:i', strtotime($scheduledAt)) . ".";
+                $message = "Rescheduled {$count} posts. (Skipped {$skipped} published posts)";
                 break;
 
             case 'retry':
                 foreach ($posts as $post) {
                     if ($post->status === 'failed') {
+                        $post->status_change_reason = 'batch_retry';
                         $post->update([
                             'status' => 'approved',
                             'publish_attempts' => 0,
                             'error_message' => null,
                         ]);
                         $count++;
+                    } else {
+                        $skipped++;
                     }
                 }
-                $message = "Prepared {$count} failed posts for retry.";
+                $message = "Prepared {$count} failed posts for retry. (Skipped {$skipped} non-failed posts)";
                 break;
 
             case 'draft':
                 foreach ($posts as $post) {
                     if (in_array($post->status, ['approved', 'failed'])) {
+                        $post->status_change_reason = 'batch_draft';
                         $post->update(['status' => 'draft']);
                         $count++;
+                    } else {
+                        $skipped++;
                     }
                 }
-                $message = "Moved {$count} posts back to draft.";
+                $message = "Moved {$count} posts back to draft. (Skipped {$skipped} posts)";
                 break;
         }
 

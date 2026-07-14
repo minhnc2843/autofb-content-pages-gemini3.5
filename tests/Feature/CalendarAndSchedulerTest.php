@@ -70,24 +70,26 @@ class CalendarAndSchedulerTest extends TestCase
 
     public function test_auto_schedule_generator(): void
     {
-        $topic = Topic::create(['name' => 'Nature', 'keyword' => 'nature']);
+        $topic = Topic::create(['name' => 'Nature', 'keyword' => 'nature', 'is_active' => true]);
         
-        // Populate a media item
-        MediaItem::create([
-            'pexels_id' => '200',
-            'type' => 'photo',
-            'url' => 'https://pexels.com/nature.jpg',
-            'thumbnail_url' => 'https://pexels.com/nature-thumb.jpg',
-            'photographer' => 'Nature Photographer'
-        ]);
+        // Populate 3 unique media items for 1 day * 3 posts/day
+        for ($i = 1; $i <= 3; $i++) {
+            MediaItem::create([
+                'pexels_id' => (string)(200 + $i),
+                'type' => 'photo',
+                'url' => "https://pexels.com/nature{$i}.jpg",
+                'thumbnail_url' => "https://pexels.com/nature-thumb{$i}.jpg",
+                'photographer' => 'Nature Photographer'
+            ]);
+        }
 
         $scheduler = new ContentCalendarService();
-        $generated = $scheduler->generateSchedule(3, 3); // 3 days, 3 posts/day = 9 posts
+        $generated = $scheduler->generateSchedule(1, 3); // 1 day, 3 posts/day = 3 posts
 
-        $this->assertEquals(9, $generated);
+        $this->assertEquals(3, $generated);
 
         // Check that posts are saved in DB
-        $this->assertDatabaseCount('posts_queue', 9);
+        $this->assertDatabaseCount('posts_queue', 3);
 
         // Verify the slots (08:00, 13:00, 20:00) starting tomorrow
         $tomorrow = Carbon::tomorrow();
@@ -105,19 +107,23 @@ class CalendarAndSchedulerTest extends TestCase
 
     public function test_generate_schedule_via_artisan_command(): void
     {
-        Topic::create(['name' => 'Nature', 'keyword' => 'nature']);
-        MediaItem::create([
-            'pexels_id' => '200',
-            'type' => 'photo',
-            'url' => 'https://pexels.com/nature.jpg',
-            'thumbnail_url' => 'https://pexels.com/nature-thumb.jpg',
-            'photographer' => 'Nature Photographer'
-        ]);
+        Topic::create(['name' => 'Nature', 'keyword' => 'nature', 'is_active' => true]);
+        
+        // Populate 2 unique media items for 1 day * 2 posts/day
+        for ($i = 1; $i <= 2; $i++) {
+            MediaItem::create([
+                'pexels_id' => (string)(300 + $i),
+                'type' => 'photo',
+                'url' => "https://pexels.com/nature-artisan{$i}.jpg",
+                'thumbnail_url' => "https://pexels.com/nature-artisan-thumb{$i}.jpg",
+                'photographer' => 'Nature Photographer'
+            ]);
+        }
 
-        $this->artisan('posts:generate-calendar --days=2 --posts-per-day=2')
-            ->expectsOutputToContain('Successfully generated 4 draft posts')
+        $this->artisan('posts:generate-calendar --days=1 --posts-per-day=2')
+            ->expectsOutputToContain('Successfully generated 2 draft posts')
             ->assertExitCode(0);
 
-        $this->assertDatabaseCount('posts_queue', 4);
+        $this->assertDatabaseCount('posts_queue', 2);
     }
 }

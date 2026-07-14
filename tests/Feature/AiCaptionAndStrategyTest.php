@@ -15,6 +15,7 @@ class AiCaptionAndStrategyTest extends TestCase
 
     public function test_generate_caption_variants_success(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-key');
 
         $topic = Topic::create(['name' => 'Pets', 'keyword' => 'cat']);
@@ -62,8 +63,9 @@ class AiCaptionAndStrategyTest extends TestCase
 
     public function test_strategy_engine_loads(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-key');
-        Topic::create(['name' => 'Pets', 'keyword' => 'cat']);
+        Topic::create(['name' => 'Pets', 'keyword' => 'cat', 'is_active' => true]);
 
         $jsonOutput = json_encode([
             'strategy_title' => 'Cat Page Strategy',
@@ -88,6 +90,10 @@ class AiCaptionAndStrategyTest extends TestCase
             ], 200),
         ]);
 
+        // Generate first to store in DB
+        $this->post('/strategy/generate');
+
+        // Now load strategy index page
         $response = $this->get('/strategy');
         $response->assertStatus(200);
 

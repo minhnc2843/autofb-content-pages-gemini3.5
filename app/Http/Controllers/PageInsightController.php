@@ -36,6 +36,11 @@ class PageInsightController extends Controller
     {
         $gemini = new GeminiService();
 
+        if (!$gemini->isEnabled()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Gemini AI features are currently disabled. Please enable it in Settings.');
+        }
+
         // Validate API Key
         if (empty($gemini->getApiKey())) {
             return redirect()->route('dashboard')

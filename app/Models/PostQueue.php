@@ -11,6 +11,8 @@ class PostQueue extends Model
 
     protected $table = 'posts_queue';
 
+    public ?string $status_change_reason = null;
+
     protected static function booted()
     {
         static::updating(function ($post) {
@@ -22,6 +24,7 @@ class PostQueue extends Model
                         'from_status' => $from,
                         'to_status' => $to,
                         'changed_by' => auth()->user()?->name ?? 'system',
+                        'reason' => $post->status_change_reason ?? null,
                     ]);
                 }
             }

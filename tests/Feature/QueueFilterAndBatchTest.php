@@ -47,40 +47,40 @@ class QueueFilterAndBatchTest extends TestCase
         $this->get('/queue?status=draft')
             ->assertInertia(fn ($page) => $page
                 ->component('Queue/Index')
-                ->has('posts', 1)
-                ->where('posts.0.caption', 'Unique apple post')
+                ->has('posts.data', 1)
+                ->where('posts.data.0.caption', 'Unique apple post')
             );
 
         // Test topic filter
         $this->get('/queue?topic_id=' . $topic2->id)
             ->assertInertia(fn ($page) => $page
                 ->component('Queue/Index')
-                ->has('posts', 1)
-                ->where('posts.0.caption', 'Orange post')
+                ->has('posts.data', 1)
+                ->where('posts.data.0.caption', 'Orange post')
             );
 
         // Test search filter
         $this->get('/queue?search=apple')
             ->assertInertia(fn ($page) => $page
                 ->component('Queue/Index')
-                ->has('posts', 1)
-                ->where('posts.0.caption', 'Unique apple post')
+                ->has('posts.data', 1)
+                ->where('posts.data.0.caption', 'Unique apple post')
             );
 
         // Test media_type filter
         $this->get('/queue?media_type=video')
             ->assertInertia(fn ($page) => $page
                 ->component('Queue/Index')
-                ->has('posts', 1)
-                ->where('posts.0.media_type', 'video')
+                ->has('posts.data', 1)
+                ->where('posts.data.0.media_type', 'video')
             );
 
         // Test date range filter
         $this->get('/queue?date_from=2026-07-22')
             ->assertInertia(fn ($page) => $page
                 ->component('Queue/Index')
-                ->has('posts', 1)
-                ->where('posts.0.caption', 'Orange post')
+                ->has('posts.data', 1)
+                ->where('posts.data.0.caption', 'Orange post')
             );
     }
 

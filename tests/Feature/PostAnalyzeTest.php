@@ -15,6 +15,7 @@ class PostAnalyzeTest extends TestCase
 
     public function test_cannot_analyze_without_gemini_api_key(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', '');
 
         // No key set in settings or env
@@ -32,6 +33,7 @@ class PostAnalyzeTest extends TestCase
 
     public function test_post_scoring_saves_to_ai_analyses_table(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-key-xyz');
 
         $jsonOutput = json_encode([
@@ -76,6 +78,7 @@ class PostAnalyzeTest extends TestCase
 
     public function test_post_scoring_uses_cache_if_valid(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-key-xyz');
 
         $post = PostQueue::create([
@@ -112,6 +115,7 @@ class PostAnalyzeTest extends TestCase
 
     public function test_post_scoring_recaches_if_post_updated(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-key-xyz');
 
         $post = PostQueue::create([

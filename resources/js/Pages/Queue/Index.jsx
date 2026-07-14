@@ -110,10 +110,10 @@ export default function Index({ posts, publishMode, filters, topics }) {
 
     // Checkbox handlers
     const toggleAll = () => {
-        if (selectedIds.length === posts.length) {
+        if (selectedIds.length === posts.data.length) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(posts.map(p => p.id));
+            setSelectedIds(posts.data.map(p => p.id));
         }
     };
 
@@ -295,14 +295,14 @@ export default function Index({ posts, publishMode, filters, topics }) {
 
             {/* Queue Table */}
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-200 mb-20">
-                {posts && posts.length > 0 ? (
+                {posts && posts.data && posts.data.length > 0 ? (
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left w-10">
                                     <input
                                         type="checkbox"
-                                        checked={selectedIds.length === posts.length && posts.length > 0}
+                                        checked={selectedIds.length === posts.data.length && posts.data.length > 0}
                                         onChange={toggleAll}
                                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                     />
@@ -328,7 +328,7 @@ export default function Index({ posts, publishMode, filters, topics }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {posts.map((post, idx) => {
+                            {posts.data.map((post, idx) => {
                                 const isChecked = selectedIds.includes(post.id);
                                 return (
                                     <tr
@@ -539,6 +539,82 @@ export default function Index({ posts, publishMode, filters, topics }) {
                     </div>
                 )}
             </div>
+
+            {/* Pagination Links */}
+            {posts && posts.links && posts.links.length > 3 && (
+                <div className="mt-4 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm border">
+                    <div className="flex flex-1 justify-between sm:hidden">
+                        {posts.prev_page_url ? (
+                            <Link
+                                href={posts.prev_page_url}
+                                className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Previous
+                            </Link>
+                        ) : (
+                            <span className="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-400">
+                                Previous
+                            </span>
+                        )}
+                        {posts.next_page_url ? (
+                            <Link
+                                href={posts.next_page_url}
+                                className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Next
+                            </Link>
+                        ) : (
+                            <span className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-400">
+                                Next
+                            </span>
+                        )}
+                    </div>
+                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm text-gray-700">
+                                Showing <span className="font-medium">{posts.from || 0}</span> to <span className="font-medium">{posts.to || 0}</span> of{' '}
+                                <span className="font-medium">{posts.total}</span> results
+                            </p>
+                        </div>
+                        <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-xs" aria-label="Pagination">
+                                {posts.links.map((link, linkIdx) => {
+                                    const label = link.label
+                                        .replace('&laquo;', '«')
+                                        .replace('&raquo;', '»')
+                                        .replace('Previous', '« Previous')
+                                        .replace('Next', 'Next »');
+
+                                    if (!link.url) {
+                                        return (
+                                            <span
+                                                key={linkIdx}
+                                                className="relative inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-400 ring-1 ring-inset ring-gray-300 bg-gray-50"
+                                            >
+                                                {label}
+                                            </span>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link
+                                            key={linkIdx}
+                                            href={link.url}
+                                            className={`relative inline-flex items-center px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:outline-offset-0 ${
+                                                link.active
+                                                    ? 'z-10 bg-indigo-600 text-white focus-visible:outline-2 focus-visible:outline-indigo-600'
+                                                    : 'text-gray-900 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {label}
+                                        </Link>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Sticky Batch Actions Toolbar */}
             {selectedIds.length > 0 && (

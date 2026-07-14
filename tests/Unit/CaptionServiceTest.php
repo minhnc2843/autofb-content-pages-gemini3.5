@@ -96,6 +96,7 @@ class CaptionServiceTest extends TestCase
 
     public function test_generate_with_ai_calls_gemini_and_returns_caption(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-ai-key');
 
         Http::fake([

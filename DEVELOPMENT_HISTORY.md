@@ -135,3 +135,40 @@ Hoàn thiện chức năng đăng VIDEO lên Facebook Page qua Meta Graph Video 
 - Đăng Reels thật (Phase 2.1 chỉ có skeleton).
 - Gemini AI thật (Phase 4).
 - Browser automation.
+
+## Acceptance Fix Pack (2026-07-14)
+
+### Mục tiêu
+Khắc phục các lỗi chưa đạt nghiệm thu và hoàn thiện MVP an toàn, ổn định: dọn dẹp cấu hình mẫu, mã hóa bảo mật, phân trang hàng đợi, tối ưu bộ lọc, siết chặt các action hàng loạt, nâng cấp cơ chế lên lịch tự động và chống trùng, tắt tự động gọi AI khi chỉ mở trang, và bổ sung test suite chứng minh.
+
+### Kết quả
+- ✅ **Bảo mật & Cấu hình**:
+  - Dọn cấu hình nhạy cảm trong `.env.example`.
+  - Ưu tiên đọc cài đặt từ DB thay vì env.
+  - Mã hóa tự động các secret settings (API keys, Tokens).
+  - Ngăn không cho ghi đè secrets khi frontend gửi chuỗi masked (`••••••••`).
+- ✅ **Phân trang & Lọc hàng đợi**:
+  - Bổ sung phân trang Backend (`paginate(20)`) và Frontend cho Queue.
+  - Batch selection chỉ chọn các item trên trang hiện tại.
+  - Cải tiến filters để khi chọn status/topic là "all" thì bỏ qua điều kiện lọc.
+- ✅ **Thao tác hàng loạt an toàn (Safe Batch Actions)**:
+  - Siết chặt các điều kiện chuyển trạng thái hàng loạt (ví dụ: chỉ cho phép duyệt bài ở trạng thái `draft` hoặc `failed`).
+  - Ghi nhận cột `reason` trong bảng lịch sử thay đổi trạng thái bài viết (`post_status_histories`) để theo dõi vết batch action.
+- ✅ **Lên lịch tự động & Chống trùng (Calendar & Scheduler)**:
+  - Tối ưu `DuplicateProtectionService` truy vấn trực tiếp DB khoảng giờ thay vì load toàn bộ.
+  - Chuẩn hóa caption trước khi so sánh trùng lặp.
+  - Hỗ trợ custom options (days, posts_per_day, start_date, media_type, topic_ids) trong `ContentCalendarService`.
+  - Hỗ trợ fallback từ Pexels API nếu cache media không đủ.
+  - Cảnh báo thiếu slot trong tháng chỉ áp dụng cho ngày hôm nay và tương lai, bỏ qua quá khứ.
+- ✅ **Kiểm soát Gemini AI (Gemini Gating)**:
+  - Tích hợp cờ `GEMINI_ENABLED` và kiểm tra khóa API để tắt hẳn các cuộc gọi AI không mong muốn.
+  - Tách hành động lấy chiến lược tuần (`GET /strategy`) thành chỉ đọc cache/DB, tạo route mới (`POST /strategy/generate`) để người dùng tự kích hoạt sinh chiến lược mới bằng nút bấm.
+  - Gating cuộc gọi Gemini trong Caption generator, Page Audit, và Queue analyze.
+- ✅ **Bổ sung Suite Test mới**:
+  - `SettingsSecurityTest`: Kiểm tra ghi đè secret, ưu tiên DB settings.
+  - `QueuePaginationTest`: Kiểm tra phân trang và lọc.
+  - `QueueBatchSafetyTest`: Kiểm tra an toàn batch action và vết status history.
+  - `CalendarValidationTest`: Kiểm tra fallback tháng/năm, lọc "all", và cảnh báo thiếu slot.
+  - `GeminiGatingTest`: Kiểm tra tắt gọi AI tự động và gating các endpoint.
+- ✅ **Tất cả các tests passed** (100% assertions).
+- ✅ **npm run build** biên dịch thành công.

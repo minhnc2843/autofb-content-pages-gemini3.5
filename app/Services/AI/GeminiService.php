@@ -25,10 +25,22 @@ class GeminiService implements AIProviderInterface
     }
 
     /**
+     * Check if Gemini is enabled in settings.
+     */
+    public function isEnabled(): bool
+    {
+        return Setting::getValue('GEMINI_ENABLED') === 'true';
+    }
+
+    /**
      * Base HTTP call to Gemini API.
      */
     protected function callGeminiApi(string $prompt, ?string $responseMimeType = null): array
     {
+        if (!$this->isEnabled()) {
+            return ['error' => 'Gemini API is currently disabled in settings.'];
+        }
+
         $apiKey = $this->getApiKey();
         if (empty($apiKey)) {
             Log::warning('Gemini API key is not configured.');
@@ -59,6 +71,7 @@ class GeminiService implements AIProviderInterface
 
             if ($response->failed()) {
                 $err = $response->json()['error']['message'] ?? "HTTP error {$response->status()}";
+                $err = str_replace($apiKey, 'HIDDEN_API_KEY', $err);
                 Log::error('Gemini API call failed: ' . $err);
                 return ['error' => 'Gemini API error: ' . $err];
             }
@@ -71,8 +84,9 @@ class GeminiService implements AIProviderInterface
                 'raw_response' => $data
             ];
         } catch (\Exception $e) {
-            Log::error('Gemini connection error: ' . $e->getMessage());
-            return ['error' => 'Could not connect to Gemini API: ' . $e->getMessage()];
+            $errMsg = str_replace($apiKey, 'HIDDEN_API_KEY', $e->getMessage());
+            Log::error('Gemini connection error: ' . $errMsg);
+            return ['error' => 'Could not connect to Gemini API: ' . $errMsg];
         }
     }
 

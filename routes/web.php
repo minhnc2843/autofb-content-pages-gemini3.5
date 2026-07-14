@@ -56,3 +56,4 @@ Route::post('/ai/generate-captions', [AICaptionController::class, 'generate'])->
 
 // Strategy Engine
 Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index');
+Route::post('/strategy/generate', [StrategyController::class, 'generate'])->name('strategy.generate');

@@ -92,6 +92,7 @@ class PageInsightTest extends TestCase
 
     public function test_audit_fails_without_gemini_key(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', '');
 
         $response = $this->post('/insights/audit');
@@ -103,6 +104,7 @@ class PageInsightTest extends TestCase
 
     public function test_audit_success(): void
     {
+        Setting::setValue('GEMINI_ENABLED', 'true');
         Setting::setValue('GEMINI_API_KEY', 'valid-gemini-key');
 
         $jsonOutput = json_encode([

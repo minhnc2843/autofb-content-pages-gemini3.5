@@ -1,6 +1,10 @@
+import { router } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '../../Components/AppLayout';
 
-export default function Index({ strategy, topics }) {
+export default function Index({ strategy, topics, geminiEnabled }) {
+    const [generating, setGenerating] = useState(false);
+
     // Categories colors mapping
     const categoryColors = {
         educational: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -13,19 +17,45 @@ export default function Index({ strategy, topics }) {
         soft_cta: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     };
 
+    const handleGenerate = () => {
+        setGenerating(true);
+        router.post('/strategy/generate', {}, {
+            preserveScroll: true,
+            onFinish: () => setGenerating(false),
+        });
+    };
+
     return (
         <AppLayout title="AI Content Strategy Engine">
             {/* Header Strategy Overview */}
-            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 to-white p-6 shadow-sm mb-8">
-                <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl">🎯</span>
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {strategy?.strategy_title || 'Weekly Content Strategy'}
-                    </h2>
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 to-white p-6 shadow-sm mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl">🎯</span>
+                        <h2 className="text-xl font-bold text-gray-800">
+                            {strategy?.strategy_title || 'Weekly Content Strategy'}
+                        </h2>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
+                        {strategy?.overview || 'Generate your custom weekly content strategy outline using Gemini AI based on your configured active topics.'}
+                    </p>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed max-w-4xl">
-                    {strategy?.overview || 'Generate your custom weekly content strategy outline using Gemini AI based on your configured active topics.'}
-                </p>
+                
+                <div>
+                    {geminiEnabled ? (
+                        <button
+                            onClick={handleGenerate}
+                            disabled={generating}
+                            className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-5 py-2.5 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                        >
+                            {generating ? '⏳ Generating...' : '🎯 Generate New Strategy'}
+                        </button>
+                    ) : (
+                        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 max-w-xs">
+                            ⚠️ <strong>Gemini Disabled:</strong> Enable Gemini in Settings to generate new strategy plans.
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -65,7 +95,7 @@ export default function Index({ strategy, topics }) {
                         </div>
                     ) : (
                         <div className="text-center py-12 bg-white rounded-xl border border-gray-150 text-gray-400 text-sm">
-                            No strategy roadmap available.
+                            No strategy roadmap generated yet. Click the generate button to start.
                         </div>
                     )}
                 </div>
@@ -81,7 +111,6 @@ export default function Index({ strategy, topics }) {
                             <div className="space-y-3.5">
                                 {Object.entries(strategy.category_distribution).map(([cat, count]) => {
                                     const percent = Math.min(100, Math.round((count / 7) * 100));
-                                    const catColor = categoryColors[cat] || 'bg-gray-100 text-gray-800';
                                     return (
                                         <div key={cat} className="space-y-1">
                                             <div className="flex justify-between items-center text-xs">
