@@ -14,6 +14,8 @@ class DashboardUpgradeTest extends TestCase
 
     public function test_dashboard_upgraded_stats(): void
     {
+        Carbon::setTestNow('2026-07-14 09:00:00');
+
         Topic::create(['name' => 'Tech', 'keyword' => 'tech']);
 
         // 1. Scheduled today

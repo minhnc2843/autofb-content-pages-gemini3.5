@@ -128,6 +128,28 @@ class DashboardController extends Controller
                 ];
             });
 
+        $service = new \App\Services\FacebookPageService();
+        $publishMode = $service->getPublishMode();
+
+        $lastRunAtStr = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_RUN_AT');
+        $lastFound = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_FOUND', '0');
+        $lastPublished = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_PUBLISHED', '0');
+        $lastFailed = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_FAILED', '0');
+
+        $isRecent = false;
+        if (!empty($lastRunAtStr)) {
+            $lastRunAt = \Carbon\Carbon::parse($lastRunAtStr);
+            $isRecent = $lastRunAt->diffInMinutes(now()) <= 2;
+        }
+
+        $schedulerStatus = [
+            'last_run_at' => $lastRunAtStr,
+            'last_found' => intval($lastFound),
+            'last_published' => intval($lastPublished),
+            'last_failed' => intval($lastFailed),
+            'is_recent' => $isRecent,
+        ];
+
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'recentPosts' => $recentPosts,
@@ -139,7 +161,9 @@ class DashboardController extends Controller
                 'coverage_percent' => $coveragePercent,
                 'next_scheduled_posts' => $nextScheduledPosts,
                 'failed_posts' => $failedPosts,
-            ]
+            ],
+            'publishMode' => $publishMode,
+            'schedulerStatus' => $schedulerStatus,
         ]);
     }
 }

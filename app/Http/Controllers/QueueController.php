@@ -114,11 +114,31 @@ class QueueController extends Controller
             ];
         });
 
+        $lastRunAtStr = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_RUN_AT');
+        $lastFound = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_FOUND', '0');
+        $lastPublished = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_PUBLISHED', '0');
+        $lastFailed = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_FAILED', '0');
+
+        $isRecent = false;
+        if (!empty($lastRunAtStr)) {
+            $lastRunAt = \Carbon\Carbon::parse($lastRunAtStr);
+            $isRecent = $lastRunAt->diffInMinutes(now()) <= 2;
+        }
+
+        $schedulerStatus = [
+            'last_run_at' => $lastRunAtStr,
+            'last_found' => intval($lastFound),
+            'last_published' => intval($lastPublished),
+            'last_failed' => intval($lastFailed),
+            'is_recent' => $isRecent,
+        ];
+
         return Inertia::render('Queue/Index', [
             'posts' => $posts,
             'publishMode' => $publishMode,
             'filters' => $request->only(['status', 'media_type', 'topic_id', 'date_from', 'date_to', 'search', 'sort']),
             'topics' => $topics,
+            'schedulerStatus' => $schedulerStatus,
         ]);
     }
 
@@ -185,9 +205,17 @@ class QueueController extends Controller
             'approve_after_save' => 'nullable|boolean',
         ]);
 
+        $scheduledAt = null;
+        if (!empty($validated['scheduled_at'])) {
+            $scheduledAt = \Carbon\Carbon::parse(
+                $validated['scheduled_at'],
+                config('app.timezone')
+            );
+        }
+
         $post->update([
             'caption' => $validated['caption'],
-            'scheduled_at' => $validated['scheduled_at'] ?? null,
+            'scheduled_at' => $scheduledAt,
         ]);
 
         $approveAfterSave = $request->boolean('approve_after_save');
@@ -391,7 +419,13 @@ class QueueController extends Controller
 
         $ids = $validated['ids'];
         $action = $validated['action'];
-        $scheduledAt = $validated['scheduled_at'] ?? null;
+        $scheduledAt = null;
+        if (!empty($validated['scheduled_at'])) {
+            $scheduledAt = \Carbon\Carbon::parse(
+                $validated['scheduled_at'],
+                config('app.timezone')
+            );
+        }
 
         $posts = PostQueue::whereIn('id', $ids)->get();
         $count = 0;
@@ -486,5 +520,22 @@ class QueueController extends Controller
         }
 
         return redirect()->route('queue.index')->with('success', $message);
+    }
+
+    public function publishDueNow(Request $request)
+    {
+        $service = new \App\Services\DuePostPublisherService();
+        $result = $service->publishDuePosts(false);
+
+        $found = $result['found'];
+        $published = $result['published'];
+        $failed = $result['failed'];
+
+        \App\Models\Setting::setValue('PUBLISH_DUE_LAST_RUN_AT', now()->toDateTimeString());
+        \App\Models\Setting::setValue('PUBLISH_DUE_LAST_FOUND', (string) $found);
+        \App\Models\Setting::setValue('PUBLISH_DUE_LAST_PUBLISHED', (string) $published);
+        \App\Models\Setting::setValue('PUBLISH_DUE_LAST_FAILED', (string) $failed);
+
+        return redirect()->back()->with('success', "Due publish completed: found {$found}, published {$published}, failed {$failed}.");
     }
 }

@@ -27,17 +27,20 @@ class DebugPostPublishCommand extends Command
         $publishMode = $service->getPublishMode();
 
         $this->info("=== Diagnosing Post #{$post->id} ===");
+        $this->line("App Timezone: " . config('app.timezone'));
+        $this->line("Current App Time: " . now()->toDateTimeString());
         $this->line("Status: " . $post->status);
         $this->line("Scheduled At: " . ($post->scheduled_at ? $post->scheduled_at->toDateTimeString() : 'N/A'));
 
         $isDue = $post->status === 'approved' && $post->scheduled_at && $post->scheduled_at->isPast();
         $this->line("Due for Auto-Publishing: " . ($isDue ? 'YES' : 'NO'));
+        $this->line("Total Due Posts in Queue: " . PostQueue::due()->count());
 
         if ($post->status !== 'approved') {
             $this->warn("⚠️  Warning: Only 'approved' posts can auto-publish. Current status is '{$post->status}'.");
         }
-        if ($post->scheduled_at && $post->scheduled_at->isFuture()) {
-            $this->warn("⚠️  Warning: Scheduled time is in the future. Post is not due yet.");
+        if ($post->status === 'approved' && $post->scheduled_at && $post->scheduled_at->isFuture()) {
+            $this->warn("⚠️  Warning: This post is not due yet. Check timezone.");
         }
 
         $mediaType = $post->mediaItem?->type ?? 'text';

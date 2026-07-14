@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\PostQueue;
-use App\Services\FacebookPageService;
+use App\Services\DuePostPublisherService;
+use App\Models\Setting;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class PublishDuePostsCommand extends Command
 {
@@ -14,61 +13,39 @@ class PublishDuePostsCommand extends Command
 
     public function handle(): int
     {
-        $service = new FacebookPageService();
-        $mode = $service->getPublishMode();
+        $service = new DuePostPublisherService();
+        
+        $this->info("Checking for due posts to publish...");
 
-        $this->info("Checking for due posts to publish... (mode: {$mode})");
+        $result = $service->publishDuePosts(false);
 
-        $duePosts = PostQueue::due()->with('mediaItem')->get();
+        $found = $result['found'];
+        $published = $result['published'];
+        $failed = $result['failed'];
+        $mode = $result['mode'];
 
-        if ($duePosts->isEmpty()) {
+        // PHẦN 4 — LƯU LAST SCHEDULER RUN / HEARTBEAT
+        Setting::setValue('PUBLISH_DUE_LAST_RUN_AT', now()->toDateTimeString());
+        Setting::setValue('PUBLISH_DUE_LAST_FOUND', (string) $found);
+        Setting::setValue('PUBLISH_DUE_LAST_PUBLISHED', (string) $published);
+        Setting::setValue('PUBLISH_DUE_LAST_FAILED', (string) $failed);
+
+        if ($found === 0) {
             $this->info('No due posts found.');
             return self::SUCCESS;
         }
 
-        $this->info("Found {$duePosts->count()} due post(s).");
+        $this->info("Found {$found} due post(s).");
 
-        $published = 0;
-        $failed = 0;
-
-        foreach ($duePosts as $post) {
-            $type = $post->mediaItem?->type ?? 'text';
-            $this->info("Processing post #{$post->id} [Type: {$type}] (scheduled: {$post->scheduled_at})");
-
-            try {
-                $result = $service->publishPost($post);
-
-                if ($result['success']) {
-                    $published++;
-                    $statusLabel = $result['mode'] ?? $mode;
-                    $this->info("  ✅ Post #{$post->id} published ({$statusLabel}). {$result['message']}");
-                } else {
-                    $failed++;
-                    $this->error("  ❌ Post #{$post->id} failed: {$result['message']}");
-                }
-            } catch (\Exception $e) {
-                $failed++;
-                $post->update([
-                    'status' => 'failed',
-                    'error_message' => $e->getMessage(),
-                ]);
-                $this->error("  ❌ Post #{$post->id} exception: {$e->getMessage()}");
-
-                Log::error("Post #{$post->id} publish exception", [
-                    'post_id' => $post->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        foreach ($result['posts'] as $p) {
+            $statusStr = $p['success'] ? 'published' : 'failed';
+            $icon = $p['success'] ? '✅' : '❌';
+            $this->line("  {$icon} Post #{$p['id']} [Scheduled: {$p['scheduled_at']}] -> {$statusStr}. Message: {$p['message']}");
         }
-
-        $statsByType = $duePosts->groupBy(function($post) {
-            return $post->mediaItem?->type ?? 'text';
-        })->map->count();
 
         $this->newLine();
         $this->info("=== Summary ===");
-        $this->info("Total found: {$duePosts->count()}");
-        $this->info("By Type: Text: " . ($statsByType['text'] ?? 0) . ", Photo: " . ($statsByType['photo'] ?? 0) . ", Video: " . ($statsByType['video'] ?? 0));
+        $this->info("Total found: {$found}");
         $this->info("Published: {$published}");
         $this->info("Failed: {$failed}");
         $this->info("Mode: {$mode}");

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import AppLayout from '../../Components/AppLayout';
 import StatusBadge from '../../Components/StatusBadge';
 
-export default function Index({ posts, publishMode, filters, topics }) {
+export default function Index({ posts, publishMode, filters, topics, schedulerStatus }) {
     const safePosts = posts && Array.isArray(posts.data) ? posts.data : [];
     const pagination = posts && typeof posts === 'object' ? posts : {
         data: [],
@@ -186,6 +186,55 @@ export default function Index({ posts, publishMode, filters, topics }) {
                 ) : (
                     <>🔵 FAKE — Posts will be fake-published (no Facebook API call)</>
                 )}
+            </div>
+
+            {/* Scheduler Status & Run Due Action Card */}
+            <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-800 mb-1.5 flex items-center gap-1.5">
+                            ⚙️ Scheduled Publishing Monitor
+                        </h4>
+                        
+                        {/* Scheduler Status Text */}
+                        {!schedulerStatus?.last_run_at ? (
+                            <div className="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700 border border-amber-200">
+                                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span>Scheduler has not run yet. Start it with <code>php artisan schedule:work</code> or click Run Due Publish Now.</span>
+                            </div>
+                        ) : !schedulerStatus?.is_recent ? (
+                            <div className="inline-flex items-center gap-1.5 rounded bg-red-50 px-2 py-1 text-xs text-red-700 border border-red-200">
+                                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                <span>Scheduler may not be running. (Last run: {schedulerStatus.last_run_at})</span>
+                            </div>
+                        ) : (
+                            <div className="inline-flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700 border border-emerald-200">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>Scheduler recently ran at {schedulerStatus.last_run_at}. (Found: {schedulerStatus.last_found}, Published: {schedulerStatus.last_published}, Failed: {schedulerStatus.last_failed})</span>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const modeText = publishMode === 'real' 
+                                    ? 'Are you sure you want to run due publish? This will immediately publish all eligible posts to Facebook Page (REAL MODE).' 
+                                    : 'Are you sure you want to run due publish (FAKE MODE)?';
+                                if (confirm(modeText)) {
+                                    router.post('/queue/publish-due-now');
+                                }
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            ⚡ Run Due Publish Now
+                        </button>
+                        <p className="mt-1 text-[10px] text-gray-500 text-right">
+                            Only approved posts with scheduled time ≤ now.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {/* Advanced Filters Panel */}

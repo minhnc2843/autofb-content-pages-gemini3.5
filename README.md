@@ -138,34 +138,34 @@ Quy trình xuất bản nháp (Draft Workflow):
   php artisan posts:publish-due
   ```
 
-### Automatic Publishing Scheduler
+### Scheduled Publishing
 
-Để bài viết đã được duyệt (`approved`) tự động đăng lên Facebook Page khi đến giờ hẹn, Laravel Scheduler phải được cấu hình chạy.
+- **Publish Now**: Bấm đăng ngay trên màn hình chi tiết hoặc danh sách hàng đợi sẽ xuất bản bài đăng ngay lập tức.
+- **Scheduled Publish (Tự động hẹn giờ)**: Chỉ tự động xuất bản khi:
+  1. Trạng thái của bài đăng là `approved`.
+  2. Thời gian hẹn giờ `scheduled_at` nhỏ hơn hoặc bằng thời gian hiện tại của hệ thống (`scheduled_at <= now()`).
+  3. Lịch chạy Laravel Scheduler đang hoạt động, hoặc người dùng kích hoạt trực tiếp bằng cách bấm **Run Due Publish Now** trên giao diện Queue.
 
-#### 1. Local Development
-Trong quá trình dev, chạy lệnh sau ở một terminal riêng biệt để liên tục kiểm tra và chạy scheduler mỗi phút:
-```bash
-php artisan schedule:work
-```
-
-#### 2. Kiểm tra thủ công (Manual Publish Check)
-Có thể kích hoạt xuất bản các bài đã đến giờ bằng lệnh:
-```bash
-php artisan posts:publish-due
-```
-
-#### 3. Cấu hình Windows Laragon / Task Scheduler
-Để chạy tự động trên môi trường production/Windows mỗi phút, tạo task scheduler chạy command sau:
-```cmd
-cd C:\laragon\www\auto-fb-content && php artisan schedule:run
-```
-
-**⚠️ Lưu ý cực kỳ quan trọng:**
-- Phải có lệnh `schedule:work` đang chạy thì bài viết ở trạng thái `approved` đến giờ mới tự động đăng.
-- Nếu không chạy scheduler, app chỉ lưu lịch đăng trong database chứ không tự đăng.
-- Bài viết có status = `draft` sẽ **không bao giờ** tự động đăng (chỉ bài viết `approved` mới được publish).
-- `FACEBOOK_PUBLISH_MODE=fake` chỉ đăng giả lập (không gọi Facebook API).
-- `FACEBOOK_PUBLISH_MODE=real` sẽ đăng thật lên trang Facebook cấu hình.
+#### Các phương thức kích hoạt tự động xuất bản:
+1. **Môi trường Local (Development)**:
+   Mở một terminal riêng biệt và chạy lệnh sau để chạy scheduler tự động mỗi phút:
+   ```bash
+   php artisan schedule:work
+   ```
+2. **Kích hoạt thủ công qua CLI**:
+   ```bash
+   php artisan posts:publish-due
+   ```
+3. **Môi trường Production (Windows / Laragon Task Scheduler)**:
+   Cấu hình Task Scheduler của Windows để chạy lệnh sau mỗi phút:
+   ```cmd
+   cd C:\laragon\www\auto-fb-content && php artisan schedule:run
+   ```
+4. **Múi giờ cấu hình (Timezone)**:
+   Để đảm bảo khớp đúng với múi giờ Việt Nam, hãy đặt tham số timezone trong file `.env`:
+   ```env
+   APP_TIMEZONE=Asia/Ho_Chi_Minh
+   ```
 
 ### Publish Logs
 

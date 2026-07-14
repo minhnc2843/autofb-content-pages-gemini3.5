@@ -32,6 +32,7 @@ Route::post('/pexels/analyze-media', [PexelsController::class, 'analyzeMedia'])-
 // Queue
 Route::get('/queue', [QueueController::class, 'index'])->name('queue.index');
 Route::post('/queue/batch', [QueueController::class, 'batchAction'])->name('queue.batch');
+Route::post('/queue/publish-due-now', [QueueController::class, 'publishDueNow'])->name('queue.publishDueNow');
 Route::get('/queue/{post}/edit', [QueueController::class, 'edit'])->name('queue.edit');
 Route::put('/queue/{post}', [QueueController::class, 'update'])->name('queue.update');
 Route::patch('/queue/{post}/approve', [QueueController::class, 'approve'])->name('queue.approve');
