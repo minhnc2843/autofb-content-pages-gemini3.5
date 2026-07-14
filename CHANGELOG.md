@@ -12,6 +12,8 @@
   - Rendered pagination navigation links in Inertia React queue view.
   - Restrained select-all checkbox to apply only to records visible on the current page.
   - Optimized status & topic filter drop-downs: selecting "all" now clears the filtering constraints instead of failing.
+  - Fixed Queue index view blank screen crash by applying safety checks for null or undefined posts data, and removing the auto-filtering useEffect loop.
+  - Added inline status warning badges/texts for Draft and Approved posts in the Queue list.
 - **Safe Batch Actions**:
   - Restricted state transitions: approving restricted to `draft`/`failed`, unapproving restricted to `approved` to `draft`, and deleting restricted strictly to `draft` posts.
   - Enabled reason logging column in `post_status_histories` mapping the batch action's name.
@@ -21,17 +23,21 @@
   - Corrected month/year fallbacks to reset out-of-bound ranges.
   - Warning checks for missing daily slots (lower than 3 posts) now check today or future dates, completely ignoring past history.
   - Optimized duplicate caption checks (`isCaptionDuplicate`) in `DuplicateProtectionService` to query database candidates using `LENGTH(caption)` bounds instead of loading the entire table.
+  - Redirected Pexels `createDraft` action to the edit screen of the newly created post, offering full media preview (with HTML5 video player and direct links) and immediate caption/schedule customization.
+  - Registered `posts:publish-due` command to run every minute in Laravel Scheduler via `routes/console.php`.
+  - Added global status warning note at the top of the monthly Calendar view.
 - **Gemini Gating**:
   - Gated GeminiService calls using `GEMINI_ENABLED` database settings to avoid unprompted page-load API hits.
   - Restructured Strategy Engine: `GET /strategy` now only reads the latest cached outline from database, delegating new generation exclusively to a new manual trigger `POST /strategy/generate` action.
 
 ### Tests Added
+- `AcceptanceFixPackTest`: Verifying Pexels redirect on draft creation, Queue page safety when empty or non-empty, approved status requirement to auto-publish, and Console Scheduler registration.
 - `SettingsSecurityTest`: Verifying settings encryption, database priority, and masked token safety.
 - `QueuePaginationTest`: Testing paginated collections and parameter persistence.
 - `QueueBatchSafetyTest`: Validating safe batch transitions, published posts isolation, and status history logs.
 - `CalendarValidationTest`: Testing boundary limits, all-filters, and future-only warnings.
 - `GeminiGatingTest`: Verifying AI calls gating, strategy generation redirects when disabled, and strategy generation isolation.
-- `GeminiServiceTest`: Expanded unit tests to cover `analyzeMedia`, `auditPage`, and `generateStrategy` methods.
+- `GeminiServiceTest` (Expanded): Added unit tests for `analyzeMedia()`, `auditPage()`, and `generateStrategy()` methods.
 
 ---
 

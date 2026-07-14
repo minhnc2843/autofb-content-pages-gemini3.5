@@ -4,6 +4,20 @@ import AppLayout from '../../Components/AppLayout';
 import StatusBadge from '../../Components/StatusBadge';
 
 export default function Index({ posts, publishMode, filters, topics }) {
+    const safePosts = posts && Array.isArray(posts.data) ? posts.data : [];
+    const pagination = posts && typeof posts === 'object' ? posts : {
+        data: [],
+        links: [],
+        from: 0,
+        to: 0,
+        total: 0,
+        prev_page_url: null,
+        next_page_url: null,
+    };
+
+    const safeTopics = Array.isArray(topics) ? topics : [];
+    const safeFilters = filters || {};
+
     // Selection state for batch actions
     const [selectedIds, setSelectedIds] = useState([]);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
@@ -19,13 +33,13 @@ export default function Index({ posts, publishMode, filters, topics }) {
     const [selectedAiAnalysis, setSelectedAiAnalysis] = useState(null);
 
     // Filters local states
-    const [statusFilter, setStatusFilter] = useState(filters?.status || '');
-    const [mediaTypeFilter, setMediaTypeFilter] = useState(filters?.media_type || '');
-    const [topicIdFilter, setTopicIdFilter] = useState(filters?.topic_id || '');
-    const [dateFromFilter, setDateFromFilter] = useState(filters?.date_from || '');
-    const [dateToFilter, setDateToFilter] = useState(filters?.date_to || '');
-    const [searchFilter, setSearchFilter] = useState(filters?.search || '');
-    const [sortFilter, setSortFilter] = useState(filters?.sort || 'created_at_desc');
+    const [statusFilter, setStatusFilter] = useState(safeFilters.status || '');
+    const [mediaTypeFilter, setMediaTypeFilter] = useState(safeFilters.media_type || '');
+    const [topicIdFilter, setTopicIdFilter] = useState(safeFilters.topic_id || '');
+    const [dateFromFilter, setDateFromFilter] = useState(safeFilters.date_from || '');
+    const [dateToFilter, setDateToFilter] = useState(safeFilters.date_to || '');
+    const [searchFilter, setSearchFilter] = useState(safeFilters.search || '');
+    const [sortFilter, setSortFilter] = useState(safeFilters.sort || 'created_at_desc');
 
     const handleApprove = (id) => {
         router.patch(`/queue/${id}/approve`, {}, { preserveScroll: true });
@@ -77,19 +91,25 @@ export default function Index({ posts, publishMode, filters, topics }) {
     };
 
     // Filter handlers
-    const applyFilters = () => {
-        router.get('/queue', {
+    const applyFiltersWithValues = (newFilters = {}) => {
+        const merged = {
             status: statusFilter,
             media_type: mediaTypeFilter,
             topic_id: topicIdFilter,
             date_from: dateFromFilter,
             date_to: dateToFilter,
             search: searchFilter,
-            sort: sortFilter
-        }, { 
+            sort: sortFilter,
+            ...newFilters
+        };
+        router.get('/queue', merged, { 
             preserveState: true,
             preserveScroll: true
         });
+    };
+
+    const applyFilters = () => {
+        applyFiltersWithValues();
     };
 
     const clearFilters = () => {
@@ -103,17 +123,12 @@ export default function Index({ posts, publishMode, filters, topics }) {
         router.get('/queue', {}, { preserveScroll: true });
     };
 
-    // Auto apply filters on dropdown updates
-    useEffect(() => {
-        applyFilters();
-    }, [statusFilter, mediaTypeFilter, topicIdFilter, sortFilter]);
-
     // Checkbox handlers
     const toggleAll = () => {
-        if (selectedIds.length === posts.data.length) {
+        if (selectedIds.length === safePosts.length && safePosts.length > 0) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(posts.data.map(p => p.id));
+            setSelectedIds(safePosts.map(p => p.id));
         }
     };
 
@@ -147,10 +162,15 @@ export default function Index({ posts, publishMode, filters, topics }) {
         });
     };
 
-    const handleBatchReschedule = (e) => {
-        e.preventDefault();
-        triggerBatchAction('reschedule', { scheduled_at: batchRescheduleDate });
-    };
+    if (!posts || typeof posts !== 'object') {
+        return (
+            <AppLayout title="Post Queue">
+                <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
+                    Queue data is not available. Please reload.
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout title="Post Queue">
@@ -200,7 +220,10 @@ export default function Index({ posts, publishMode, filters, topics }) {
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value);
+                                applyFiltersWithValues({ status: e.target.value });
+                            }}
                             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
                         >
                             <option value="">All Statuses</option>
@@ -217,7 +240,10 @@ export default function Index({ posts, publishMode, filters, topics }) {
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Media Type</label>
                         <select
                             value={mediaTypeFilter}
-                            onChange={(e) => setMediaTypeFilter(e.target.value)}
+                            onChange={(e) => {
+                                setMediaTypeFilter(e.target.value);
+                                applyFiltersWithValues({ media_type: e.target.value });
+                            }}
                             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
                         >
                             <option value="">All Types</option>
@@ -232,11 +258,14 @@ export default function Index({ posts, publishMode, filters, topics }) {
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Topic</label>
                         <select
                             value={topicIdFilter}
-                            onChange={(e) => setTopicIdFilter(e.target.value)}
+                            onChange={(e) => {
+                                setTopicIdFilter(e.target.value);
+                                applyFiltersWithValues({ topic_id: e.target.value });
+                            }}
                             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
                         >
                             <option value="">All Topics</option>
-                            {topics && topics.map(t => (
+                            {safeTopics && safeTopics.map(t => (
                                 <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
                         </select>
@@ -249,7 +278,7 @@ export default function Index({ posts, publishMode, filters, topics }) {
                             type="date"
                             value={dateFromFilter}
                             onChange={(e) => setDateFromFilter(e.target.value)}
-                            onBlur={applyFilters}
+                            onBlur={() => applyFiltersWithValues({ date_from: dateFromFilter })}
                             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
                         />
                     </div>
@@ -261,7 +290,7 @@ export default function Index({ posts, publishMode, filters, topics }) {
                             type="date"
                             value={dateToFilter}
                             onChange={(e) => setDateToFilter(e.target.value)}
-                            onBlur={applyFilters}
+                            onBlur={() => applyFiltersWithValues({ date_to: dateToFilter })}
                             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
                         />
                     </div>
@@ -271,7 +300,10 @@ export default function Index({ posts, publishMode, filters, topics }) {
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort By</label>
                         <select
                             value={sortFilter}
-                            onChange={(e) => setSortFilter(e.target.value)}
+                            onChange={(e) => {
+                                setSortFilter(e.target.value);
+                                applyFiltersWithValues({ sort: e.target.value });
+                            }}
                             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
                         >
                             <option value="created_at_desc">Created: Newest First</option>
@@ -295,14 +327,14 @@ export default function Index({ posts, publishMode, filters, topics }) {
 
             {/* Queue Table */}
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-200 mb-20">
-                {posts && posts.data && posts.data.length > 0 ? (
+                {safePosts && safePosts.length > 0 ? (
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left w-10">
                                     <input
                                         type="checkbox"
-                                        checked={selectedIds.length === posts.data.length && posts.data.length > 0}
+                                        checked={selectedIds.length === safePosts.length && safePosts.length > 0}
                                         onChange={toggleAll}
                                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                     />
@@ -328,7 +360,7 @@ export default function Index({ posts, publishMode, filters, topics }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {posts.data.map((post, idx) => {
+                            {safePosts.map((post, idx) => {
                                 const isChecked = selectedIds.includes(post.id);
                                 return (
                                     <tr
@@ -398,6 +430,16 @@ export default function Index({ posts, publishMode, filters, topics }) {
                                                     </span>
                                                 )}
                                             </div>
+                                            {post.status === 'draft' && (
+                                                <p className="text-[10px] text-amber-600 mt-1 italic font-medium">
+                                                    ⚠️ Draft posts will not auto-publish. Approve this post before scheduled time.
+                                                </p>
+                                            )}
+                                            {post.status === 'approved' && (
+                                                <p className="text-[10px] text-blue-600 mt-1 italic font-medium">
+                                                    ℹ️ Approved posts will publish when posts:publish-due runs.
+                                                </p>
+                                            )}
                                             {post.error_message && (
                                                 <p className="mt-1 truncate text-xs text-red-500" title={post.error_message}>
                                                     ⚠ {post.error_message}
@@ -541,12 +583,12 @@ export default function Index({ posts, publishMode, filters, topics }) {
             </div>
 
             {/* Pagination Links */}
-            {posts && posts.links && posts.links.length > 3 && (
+            {pagination && pagination.links && pagination.links.length > 3 && (
                 <div className="mt-4 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm border">
                     <div className="flex flex-1 justify-between sm:hidden">
-                        {posts.prev_page_url ? (
+                        {pagination.prev_page_url ? (
                             <Link
-                                href={posts.prev_page_url}
+                                href={pagination.prev_page_url}
                                 className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                             >
                                 Previous
@@ -556,9 +598,9 @@ export default function Index({ posts, publishMode, filters, topics }) {
                                 Previous
                             </span>
                         )}
-                        {posts.next_page_url ? (
+                        {pagination.next_page_url ? (
                             <Link
-                                href={posts.next_page_url}
+                                href={pagination.next_page_url}
                                 className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                             >
                                 Next
@@ -572,13 +614,13 @@ export default function Index({ posts, publishMode, filters, topics }) {
                     <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                         <div>
                             <p className="text-sm text-gray-700">
-                                Showing <span className="font-medium">{posts.from || 0}</span> to <span className="font-medium">{posts.to || 0}</span> of{' '}
-                                <span className="font-medium">{posts.total}</span> results
+                                Showing <span className="font-medium">{pagination.from || 0}</span> to <span className="font-medium">{pagination.to || 0}</span> of{' '}
+                                <span className="font-medium">{pagination.total}</span> results
                             </p>
                         </div>
                         <div>
                             <nav className="isolate inline-flex -space-x-px rounded-md shadow-xs" aria-label="Pagination">
-                                {posts.links.map((link, linkIdx) => {
+                                {pagination.links.map((link, linkIdx) => {
                                     const label = link.label
                                         .replace('&laquo;', '«')
                                         .replace('&raquo;', '»')

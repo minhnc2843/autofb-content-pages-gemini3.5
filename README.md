@@ -10,7 +10,7 @@ Xây dựng web app bằng **Laravel + Inertia React + Tailwind** để:
 4. Duyệt bài trước khi đăng.
 5. Đăng lên Facebook Page qua Meta Graph API (Phase 2).
 6. Đăng video lên Facebook Page qua Meta Graph Video API (Phase 2.1).
-7. Về sau tích hợp Gemini để chấm điểm bài viết, phân tích Page, gợi ý tối ưu nội dung.
+7. tích hợp Gemini để chấm điểm bài viết, phân tích Page, gợi ý tối ưu nội dung.
 
 ## Stack
 
@@ -33,7 +33,8 @@ Xây dựng web app bằng **Laravel + Inertia React + Tailwind** để:
 composer install
 cp .env.example .env
 php artisan key:generate
-# Tạo database/database.sqlite nếu chưa có
+# Nếu dùng SQLite: tạo file database/database.sqlite trước khi migrate
+# Nếu dùng MySQL: tạo database trong MySQL trước khi migrate
 php artisan migrate
 npm install
 npm run build
@@ -115,6 +116,35 @@ php artisan posts:publish-due
 # Tạo draft posts tự động cho các topics active
 php artisan posts:generate-daily
 ```
+
+### Automatic Publishing Scheduler
+
+Để bài viết đã được duyệt (`approved`) tự động đăng lên Facebook Page khi đến giờ hẹn, Laravel Scheduler phải được cấu hình chạy.
+
+#### 1. Local Development
+Trong quá trình dev, chạy lệnh sau ở một terminal riêng biệt để liên tục kiểm tra và chạy scheduler mỗi phút:
+```bash
+php artisan schedule:work
+```
+
+#### 2. Kiểm tra thủ công (Manual Publish Check)
+Có thể kích hoạt xuất bản các bài đã đến giờ bằng lệnh:
+```bash
+php artisan posts:publish-due
+```
+
+#### 3. Cấu hình Windows Laragon / Task Scheduler
+Để chạy tự động trên môi trường production/Windows mỗi phút, tạo task scheduler chạy command sau:
+```cmd
+cd C:\laragon\www\auto-fb-content && php artisan schedule:run
+```
+
+**⚠️ Lưu ý cực kỳ quan trọng:**
+- Phải có lệnh `schedule:work` đang chạy thì bài viết ở trạng thái `approved` đến giờ mới tự động đăng.
+- Nếu không chạy scheduler, app chỉ lưu lịch đăng trong database chứ không tự đăng.
+- Bài viết có status = `draft` sẽ **không bao giờ** tự động đăng (chỉ bài viết `approved` mới được publish).
+- `FACEBOOK_PUBLISH_MODE=fake` chỉ đăng giả lập (không gọi Facebook API).
+- `FACEBOOK_PUBLISH_MODE=real` sẽ đăng thật lên trang Facebook cấu hình.
 
 ### Publish Logs
 

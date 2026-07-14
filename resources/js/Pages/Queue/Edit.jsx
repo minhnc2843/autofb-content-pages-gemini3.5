@@ -20,23 +20,54 @@ export default function Edit({ post }) {
             <div className="mx-auto max-w-3xl">
                 <div className="rounded-xl bg-white p-6 shadow-sm">
                     {/* Status display */}
-                    <div className="mb-6 flex items-center gap-3">
-                        <span className="text-sm font-medium text-gray-500">Current Status:</span>
-                        <StatusBadge status={post.status} />
+                    <div className="mb-6 flex flex-col gap-2 rounded-lg bg-gray-50 p-4 border border-gray-200">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-gray-500">Current Status:</span>
+                            <StatusBadge status={post.status} />
+                        </div>
+                        {post.status === 'draft' && (
+                            <p className="text-xs text-amber-600 font-medium mt-1">
+                                ⚠️ <strong>Draft post:</strong> Draft posts will not auto-publish. Approve this post before scheduled time.
+                            </p>
+                        )}
+                        {post.status === 'approved' && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                                ℹ️ <strong>Approved post:</strong> Approved posts will publish when the scheduled publish command runs.
+                            </p>
+                        )}
                     </div>
 
                     {/* Media preview */}
                     {(post.thumbnail_url || post.media_url) && (
                         <div className="mb-6">
                             <label className="mb-2 block text-sm font-medium text-gray-700">
-                                Media Preview
+                                Media Preview ({post.media_type || 'photo'})
                             </label>
-                            <div className="w-full max-w-md overflow-hidden rounded-lg bg-gray-100">
-                                <img
-                                    src={post.thumbnail_url || post.media_url}
-                                    alt="Post media"
-                                    className="w-full object-contain"
-                                />
+                            <div className="w-full max-w-md overflow-hidden rounded-lg bg-gray-100 p-2 border border-gray-200">
+                                {post.media_type === 'video' && post.media_url ? (
+                                    <div className="space-y-2">
+                                        <video
+                                            src={post.media_url}
+                                            poster={post.thumbnail_url}
+                                            controls
+                                            className="w-full rounded-lg max-h-[300px]"
+                                        />
+                                        <a
+                                            href={post.media_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block text-center text-xs font-semibold text-indigo-600 hover:underline"
+                                        >
+                                            🎬 Open Direct Video Link ↗
+                                        </a>
+                                    </div>
+                                ) : (
+                                    <img
+                                        src={post.thumbnail_url || post.media_url}
+                                        alt="Post media"
+                                        className="w-full object-contain max-h-[400px] rounded-lg"
+                                    />
+                                )}
                             </div>
                         </div>
                     )}

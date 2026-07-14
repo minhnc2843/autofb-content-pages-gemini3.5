@@ -97,15 +97,16 @@ class PexelsController extends Controller
         $caption = $captionService->generate($topic, $mediaData, 'english');
 
         // Create draft post
-        PostQueue::create([
+        $post = PostQueue::create([
             'media_item_id' => $mediaItem->id,
             'caption' => $caption,
             'status' => 'draft',
             'scheduled_at' => now()->addHour(),
         ]);
 
-        return redirect()->route('queue.index')
-            ->with('success', 'Draft post created successfully!');
+        return redirect()
+            ->route('queue.edit', $post)
+            ->with('success', 'Draft post created successfully. You can preview, edit caption, and schedule it here.');
     }
 
     /**

@@ -147,6 +147,12 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
                 </div>
             </div>
 
+            {/* Status alerts banner */}
+            <div className="mb-4 rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600 flex flex-col sm:flex-row justify-between gap-2 shadow-xs">
+                <span>⚠️ <strong>Draft posts</strong> will not auto-publish. Approve them before scheduled time.</span>
+                <span>ℹ️ <strong>Approved posts</strong> will publish when the scheduled publish command runs.</span>
+            </div>
+
             {/* Calendar Grid */}
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                 {/* Week headers */}
