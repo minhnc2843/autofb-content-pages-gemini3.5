@@ -3,7 +3,7 @@ import { useState } from 'react';
 import AppLayout from '../../Components/AppLayout';
 import StatusBadge from '../../Components/StatusBadge';
 
-export default function Edit({ post }) {
+export default function Edit({ post, publishMode }) {
     const [approving, setApproving] = useState(false);
     const [publishing, setPublishing] = useState(false);
 
@@ -62,9 +62,18 @@ export default function Edit({ post }) {
                 <div className="rounded-xl bg-white p-6 shadow-sm">
                     {/* Status display */}
                     <div className="mb-6 flex flex-col gap-2 rounded-lg bg-gray-50 p-4 border border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-gray-500">Current Status:</span>
-                            <StatusBadge status={post.status} />
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-gray-500">Current Status:</span>
+                                <StatusBadge status={post.status} />
+                            </div>
+                            <div className="text-xs font-semibold">
+                                {publishMode === 'real' ? (
+                                    <span className="text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded">🔴 REAL mode: this will call Facebook Graph API.</span>
+                                ) : (
+                                    <span className="text-gray-500 bg-gray-100 border border-gray-200 px-2 py-1 rounded">⚪ FAKE mode: no Facebook API call.</span>
+                                )}
+                            </div>
                         </div>
                         {post.status === 'draft' && (
                             <p className="text-xs text-amber-600 font-medium mt-1">
@@ -75,6 +84,23 @@ export default function Edit({ post }) {
                             <p className="text-xs text-blue-600 font-medium mt-1">
                                 ℹ️ This post can publish when scheduled command runs, or you can publish now.
                             </p>
+                        )}
+                        {(post.status === 'failed' || post.error_message) && (
+                            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                <strong className="text-red-800">Publish Failed:</strong>
+                                <p className="mt-1 font-medium">{post.error_message || 'Unknown error. Check publish logs below.'}</p>
+                                <div className="text-xs text-red-600 mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-red-100 pt-2">
+                                    {post.publish_attempts > 0 && (
+                                        <span>Attempts: <strong>{post.publish_attempts}</strong></span>
+                                    )}
+                                    {post.publish_started_at && (
+                                        <span>Last Attempt: <strong>{post.publish_started_at}</strong></span>
+                                    )}
+                                    {post.published_at && (
+                                        <span>Published At: <strong>{post.published_at}</strong></span>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -227,7 +253,7 @@ export default function Edit({ post }) {
                                                 onClick={handleApproveOnly}
                                                 className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
                                             >
-                                                {approving ? 'Approving...' : 'Approve Now'}
+                                                {approving ? 'Approving...' : 'Retry as Approved'}
                                             </button>
                                         </>
                                     )}
@@ -285,6 +311,73 @@ export default function Edit({ post }) {
                                         </li>
                                     ))}
                                 </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recent Publish Logs */}
+                    {post.publish_logs && post.publish_logs.length > 0 && (
+                        <div className="mt-8 border-t border-gray-200 pt-6">
+                            <h3 className="mb-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                📊 Recent Publish Logs
+                            </h3>
+                            <div className="space-y-4">
+                                {post.publish_logs.map((log) => {
+                                    const responseErrorMsg = log.response_json?.error?.message 
+                                        || log.response_json?.error_message 
+                                        || null;
+                                    const endpoint = log.request_summary?.endpoint 
+                                        || log.request_summary?.url 
+                                        || null;
+                                    const mediaUrl = log.request_summary?.media_url 
+                                        || log.request_summary?.url 
+                                        || null;
+
+                                    return (
+                                        <div key={log.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+                                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2 mb-2">
+                                                <div className="font-semibold text-gray-800 uppercase tracking-wide">
+                                                    Action: {log.action}
+                                                </div>
+                                                <div className="text-gray-400">
+                                                    {log.created_at}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mb-2">
+                                                <div>
+                                                    <span className="font-medium text-gray-500">Mode:</span>{' '}
+                                                    <span className="font-semibold capitalize text-gray-700">{log.mode}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium text-gray-500">Status:</span>{' '}
+                                                    <span className={`font-semibold px-2 py-0.5 rounded text-[10px] uppercase ${
+                                                        log.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                    }`}>{log.status}</span>
+                                                </div>
+                                                {endpoint && (
+                                                    <div className="md:col-span-2 break-all">
+                                                        <span className="font-medium text-gray-500">Endpoint:</span>{' '}
+                                                        <code className="bg-gray-100 px-1 rounded text-red-600">{endpoint}</code>
+                                                    </div>
+                                                )}
+                                                {mediaUrl && (
+                                                    <div className="md:col-span-2 break-all">
+                                                        <span className="font-medium text-gray-500">Media Source URL:</span>{' '}
+                                                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                                                            {mediaUrl}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {(log.error_message || responseErrorMsg) && (
+                                                <div className="mt-2 rounded bg-red-50 border border-red-100 p-2 text-red-700">
+                                                    <span className="font-bold">Error details:</span>{' '}
+                                                    {log.error_message || responseErrorMsg}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

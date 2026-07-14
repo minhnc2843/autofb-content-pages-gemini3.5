@@ -177,13 +177,35 @@ Mọi lần publish (fake/real) đều được log vào bảng `post_publish_lo
 - request_summary (không chứa token)
 - response_json (không chứa token)
 
+### Debug Failed Publish
+
+Khi một bài viết ở trạng thái `approved` chuyển sang `failed`, hệ thống đã thử xuất bản nhưng gặp lỗi từ cấu hình, từ Facebook API, hoặc do URL của file media không hợp lệ.
+
+Để chẩn đoán nguyên nhân lỗi:
+1. **Trang Queue/Edit**: Mở bài viết bị lỗi trên giao diện chỉnh sửa để xem thông báo lỗi chi tiết cùng lịch sử 5 bản ghi publish logs gần nhất.
+2. **Command chẩn đoán**: Sử dụng Artisan command để kiểm tra trạng thái bài đăng và tính hợp lệ của access token:
+   ```bash
+   # Chẩn đoán bài đăng số 5
+   php artisan posts:debug-publish 5
+
+   # Chẩn đoán bài đăng số 5 kèm theo kiểm tra thông tin Facebook API
+   php artisan posts:debug-publish 5 --validate-config
+
+   # Chạy tự động xuất bản
+   php artisan posts:publish-due
+   ```
+
+*Lưu ý:*
+- `FACEBOOK_PUBLISH_MODE=fake` dùng để giả lập toàn bộ quá trình đăng (không gọi API thật).
+- `FACEBOOK_PUBLISH_MODE=real` yêu cầu Page Access Token có đủ các quyền đăng bài (`pages_manage_posts`) và media URL phải ở dạng public để Facebook có thể tải về.
+
 ## Security
 
 - ❌ Không log access token
 - ❌ Không trả token về frontend sau khi lưu (masked với •)
 - ❌ Không commit token vào git
-- ✅ Secret settings có `is_secret=true`
-- ✅ Publish logs không chứa token
+- ↳ Secret settings có `is_secret=true`
+- ↳ Publish logs không chứa token
 
 ## Chạy Test
 
@@ -193,19 +215,19 @@ php artisan test
 
 ## Phase hiện tại: Completed MVP (Phase 6 + Acceptance Fix Pack)
 
-- ✅ Dashboard nâng cấp (Coverage score, missing slot indicators, upcoming queue lists, quick actions)
-- ✅ Topics CRUD + toggle active
-- ✅ Pexels Search (tối ưu hóa chọn video MP4 dưới 1080p, có duration badge, thumbnail cho video)
-- ✅ Queue management (approve/unapprove/edit/delete/reschedule) + Phân trang (Pagination)
-- ✅ **Publish Now** cho bài approved (hỗ trợ xác nhận modal chi tiết cho video)
-- ✅ **Fake/Real publish mode**
-- ✅ **Facebook Graph API**: text post + photo post + **video post**
-- ✅ **Validate Facebook Config**
-- ✅ **Publish logs** (post_publish_logs)
-- ✅ Settings page với đầy đủ Facebook Publishing, Video configs và **Mã hóa secrets**
-- ✅ Console commands (generate-daily, publish-due, generate-calendar)
-- ✅ Lịch đăng bài monthly grid view + **Cảnh báo thiếu slot đăng bài**
-- ✅ Chống trùng lặp (Duplicate protection): chống trùng ảnh/video 30 ngày, trùng slot, và trùng caption (tối ưu hóa SQLite/MySQL LENGTH queries)
-- ✅ Tích hợp Gemini AI tạo caption variants, chấm điểm nội dung, Page Audit, và Weekly Strategy Engine (hỗ trợ gating `GEMINI_ENABLED` và nút bấm thủ công)
-- ✅ **122 tests passed** (100% assertions)
+- ↳ Dashboard nâng cấp (Coverage score, missing slot indicators, upcoming queue lists, quick actions)
+- ↳ Topics CRUD + toggle active
+- ↳ Pexels Search (tối ưu hóa chọn video MP4 dưới 1080p, có duration badge, thumbnail cho video)
+- ↳ Queue management (approve/unapprove/edit/delete/reschedule) + Phân trang (Pagination)
+- ↳ **Publish Now** cho bài approved (hỗ trợ xác nhận modal chi tiết cho video)
+- ↳ **Fake/Real publish mode**
+- ↳ **Facebook Graph API**: text post + photo post + **video post**
+- ↳ **Validate Facebook Config**
+- ↳ **Publish logs** (post_publish_logs)
+- ↳ Settings page với đầy đủ Facebook Publishing, Video configs và **Mã hóa secrets**
+- ↳ Console commands (generate-daily, publish-due, generate-calendar)
+- ↳ Lịch đăng bài monthly grid view + **Cảnh báo thiếu slot đăng bài**
+- ↳ Chống trùng lặp (Duplicate protection): chống trùng ảnh/video 30 ngày, trùng slot, và trùng caption (tối ưu hóa SQLite/MySQL LENGTH queries)
+- ↳ Tích hợp Gemini AI tạo caption variants, chấm điểm nội dung, Page Audit, và Weekly Strategy Engine (hỗ trợ gating `GEMINI_ENABLED` và nút bấm thủ công)
+- ↳ **140 tests passed** (100% assertions)
 - ❌ Browser automation (không bao giờ)

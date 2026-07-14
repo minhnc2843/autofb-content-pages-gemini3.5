@@ -128,7 +128,28 @@ class QueueController extends Controller
             $query->orderBy('created_at', 'desc');
         }]);
 
+        $service = new FacebookPageService();
+        $publishMode = $service->getPublishMode();
+
+        $publishLogs = $post->publishLogs()
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'status' => $log->status,
+                    'mode' => $log->mode,
+                    'error_message' => $log->error_message,
+                    'request_summary' => $log->request_summary,
+                    'response_json' => $log->response_json,
+                    'created_at' => $log->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
         return Inertia::render('Queue/Edit', [
+            'publishMode' => $publishMode,
             'post' => [
                 'id' => $post->id,
                 'caption' => $post->caption,
@@ -140,6 +161,10 @@ class QueueController extends Controller
                 'media_type' => $post->mediaItem?->type,
                 'facebook_post_id' => $post->facebook_post_id,
                 'error_message' => $post->error_message,
+                'publish_attempts' => $post->publish_attempts,
+                'publish_started_at' => $post->publish_started_at?->format('Y-m-d H:i:s'),
+                'published_at' => $post->published_at?->format('Y-m-d H:i:s'),
+                'publish_logs' => $publishLogs,
                 'status_history' => $post->statusHistories->map(function ($h) {
                     return [
                         'from_status' => $h->from_status,

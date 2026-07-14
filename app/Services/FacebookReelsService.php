@@ -250,16 +250,20 @@ class FacebookReelsService
         ]);
     }
  
-    /**
-     * Helper to parse API error.
-     */
     protected function parseError($response): string
     {
         $data = $response->json();
-        if (isset($data['error']['message'])) {
-            return $data['error']['message'];
-        }
-        return "HTTP {$response->status()} error";
+        $error = $data['error'] ?? [];
+        $message = $error['message'] ?? "HTTP {$response->status()} error";
+        $code = $error['code'] ?? null;
+        $subcode = $error['error_subcode'] ?? null;
+        $type = $error['type'] ?? null;
+
+        return trim($message . 
+            ($code ? " (code: {$code})" : '') . 
+            ($subcode ? ", subcode: {$subcode}" : '') . 
+            ($type ? ", type: {$type}" : '')
+        );
     }
  
     /**
