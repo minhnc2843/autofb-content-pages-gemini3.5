@@ -12,9 +12,9 @@ class FacebookReelsService
  {
     protected FacebookPageService $pageService;
  
-    public function __construct()
+    public function __construct(?FacebookPageService $pageService = null)
     {
-        $this->pageService = new FacebookPageService();
+        $this->pageService = $pageService ?: new FacebookPageService();
     }
  
     /**
@@ -239,6 +239,7 @@ class FacebookReelsService
         }
  
         \App\Models\PostPublishLog::create([
+            'page_id' => $this->pageService->getPage()?->id,
             'post_queue_id' => $post->id,
             'mode' => $this->pageService->getPublishMode(),
             'provider' => 'facebook',

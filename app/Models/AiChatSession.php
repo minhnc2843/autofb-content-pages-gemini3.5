@@ -5,18 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class PageInsight extends Model
+class AiChatSession extends Model
 {
     use HasFactory;
 
-    protected $table = 'page_insights';
-
     protected $fillable = [
         'page_id',
-        'metric',
-        'period',
-        'values_json',
-        'fetched_date',
+        'title',
+        'status',
     ];
 
     public function page()
@@ -24,8 +20,8 @@ class PageInsight extends Model
         return $this->belongsTo(Page::class);
     }
 
-    protected $casts = [
-        'values_json' => 'array',
-        'fetched_date' => 'date',
-    ];
+    public function messages()
+    {
+        return $this->hasMany(AiChatMessage::class, 'session_id');
+    }
 }

@@ -12,6 +12,7 @@ class AiAnalysis extends Model
     protected $table = 'ai_analyses';
 
     protected $fillable = [
+        'page_id',
         'target_type',
         'target_id',
         'provider',
@@ -19,6 +20,11 @@ class AiAnalysis extends Model
         'result_json',
         'raw_response',
     ];
+
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
 
     protected $casts = [
         'result_json' => 'array',

@@ -5,23 +5,46 @@ namespace App\Http\Controllers;
 use App\Models\PostQueue;
 use App\Models\PageInsight;
 use App\Models\AiAnalysis;
+use App\Models\Page;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $pageId = $request->input('page_id');
+        $resolvedPage = $pageId ? Page::with('profile')->find($pageId) : null;
+
+        // Base queries
+        $draftQ = PostQueue::draft();
+        $approvedQ = PostQueue::approved();
+        $publishedQ = PostQueue::published();
+        $publishedFakeQ = PostQueue::publishedFake();
+        $failedQ = PostQueue::failed();
+
+        if ($pageId) {
+            $draftQ->where('page_id', $pageId);
+            $approvedQ->where('page_id', $pageId);
+            $publishedQ->where('page_id', $pageId);
+            $publishedFakeQ->where('page_id', $pageId);
+            $failedQ->where('page_id', $pageId);
+        }
+
         $stats = [
-            'draft' => PostQueue::draft()->count(),
-            'approved' => PostQueue::approved()->count(),
-            'published' => PostQueue::published()->count(),
-            'published_fake' => PostQueue::publishedFake()->count(),
-            'failed' => PostQueue::failed()->count(),
+            'draft' => $draftQ->count(),
+            'approved' => $approvedQ->count(),
+            'published' => $publishedQ->count(),
+            'published_fake' => $publishedFakeQ->count(),
+            'failed' => $failedQ->count(),
         ];
 
-        $recentPosts = PostQueue::with(['topic', 'mediaItem'])
-            ->whereNotNull('scheduled_at')
-            ->orderBy('scheduled_at', 'desc')
+        $recentPostsQuery = PostQueue::with(['topic', 'mediaItem'])
+            ->whereNotNull('scheduled_at');
+        if ($pageId) {
+            $recentPostsQuery->where('page_id', $pageId);
+        }
+        $recentPosts = $recentPostsQuery->orderBy('scheduled_at', 'desc')
             ->limit(10)
             ->get()
             ->map(function ($post) {
@@ -36,8 +59,12 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Group insights by fetched_date
-        $insightsList = PageInsight::orderBy('fetched_date', 'asc')->get();
+        // Insights query
+        $insightsQuery = PageInsight::query();
+        if ($pageId) {
+            $insightsQuery->where('page_id', $pageId);
+        }
+        $insightsList = $insightsQuery->orderBy('fetched_date', 'asc')->get();
         $groupedInsights = [];
         foreach ($insightsList as $insight) {
             $date = $insight->fetched_date->format('Y-m-d');
@@ -50,21 +77,23 @@ class DashboardController extends Controller
                 ];
             }
             if ($insight->metric === 'page_impressions') {
-                $groupedInsights[$date]['impressions'] = $insight->values_json['value'] ?? 0;
+                $groupedInsights[$date]['impressions'] += $insight->values_json['value'] ?? 0;
             } elseif ($insight->metric === 'page_post_engagements') {
-                $groupedInsights[$date]['engagements'] = $insight->values_json['value'] ?? 0;
+                $groupedInsights[$date]['engagements'] += $insight->values_json['value'] ?? 0;
             } elseif ($insight->metric === 'page_fans') {
-                $groupedInsights[$date]['followers'] = $insight->values_json['value'] ?? 0;
+                $groupedInsights[$date]['followers'] += $insight->values_json['value'] ?? 0;
             }
         }
         $insightsData = array_values($groupedInsights);
 
         // Fetch latest AI page audit
-        $latestAudit = AiAnalysis::where('target_type', 'page_insight')
-            ->where('target_id', 0)
-            ->where('provider', 'gemini')
-            ->orderBy('created_at', 'desc')
-            ->first();
+        $auditQuery = AiAnalysis::where('target_type', 'page_insight');
+        if ($pageId) {
+            $auditQuery->where('page_id', $pageId);
+        } else {
+            $auditQuery->where('target_id', 0);
+        }
+        $latestAudit = $auditQuery->orderBy('created_at', 'desc')->first();
 
         $auditData = $latestAudit ? [
             'score' => $latestAudit->score,
@@ -74,16 +103,26 @@ class DashboardController extends Controller
             'created_at' => $latestAudit->created_at->format('Y-m-d H:i'),
         ] : null;
 
-        // Custom Phase 3.5 Statistics
+        // Custom Statistics
         $today = \Carbon\Carbon::today()->format('Y-m-d');
-        $scheduledToday = PostQueue::whereDate('scheduled_at', $today)->count();
+        $scheduledTodayQuery = PostQueue::whereDate('scheduled_at', $today);
+        if ($pageId) {
+            $scheduledTodayQuery->where('page_id', $pageId);
+        }
+        $scheduledToday = $scheduledTodayQuery->count();
 
         $next7DaysStart = \Carbon\Carbon::tomorrow();
         $next7DaysEnd = \Carbon\Carbon::tomorrow()->addDays(6)->endOfDay();
-        $countsByDate = PostQueue::whereBetween('scheduled_at', [$next7DaysStart, $next7DaysEnd])
-            ->get()
+
+        $countsQuery = PostQueue::whereBetween('scheduled_at', [$next7DaysStart, $next7DaysEnd]);
+        if ($pageId) {
+            $countsQuery->where('page_id', $pageId);
+        }
+        $countsByDate = $countsQuery->get()
             ->groupBy(fn($post) => $post->scheduled_at->format('Y-m-d'))
             ->map(fn($group) => $group->count());
+
+        $postsPerDay = $resolvedPage->profile->max_posts_per_day ?? 3;
 
         $missingSlots7Days = 0;
         $totalScheduledNext7Days = 0;
@@ -91,16 +130,20 @@ class DashboardController extends Controller
             $dateStr = \Carbon\Carbon::tomorrow()->addDays($i)->format('Y-m-d');
             $count = $countsByDate->get($dateStr, 0);
             $totalScheduledNext7Days += $count;
-            if ($count < 3) {
+            if ($count < $postsPerDay) {
                 $missingSlots7Days++;
             }
         }
-        $coveragePercent = min(100, (int)(($totalScheduledNext7Days / 21) * 100));
+        $expectedTotal = $postsPerDay * 7;
+        $coveragePercent = $expectedTotal > 0 ? min(100, (int)(($totalScheduledNext7Days / $expectedTotal) * 100)) : 100;
 
-        $nextScheduledPosts = PostQueue::with(['topic', 'mediaItem'])
+        $nextScheduledPostsQuery = PostQueue::with(['topic', 'mediaItem'])
             ->where('status', 'approved')
-            ->where('scheduled_at', '>', \Carbon\Carbon::now())
-            ->orderBy('scheduled_at', 'asc')
+            ->where('scheduled_at', '>', \Carbon\Carbon::now());
+        if ($pageId) {
+            $nextScheduledPostsQuery->where('page_id', $pageId);
+        }
+        $nextScheduledPosts = $nextScheduledPostsQuery->orderBy('scheduled_at', 'asc')
             ->limit(3)
             ->get()
             ->map(function ($post) {
@@ -113,9 +156,12 @@ class DashboardController extends Controller
                 ];
             });
 
-        $failedPosts = PostQueue::with(['topic', 'mediaItem'])
-            ->where('status', 'failed')
-            ->orderBy('updated_at', 'desc')
+        $failedPostsQuery = PostQueue::with(['topic', 'mediaItem'])
+            ->where('status', 'failed');
+        if ($pageId) {
+            $failedPostsQuery->where('page_id', $pageId);
+        }
+        $failedPosts = $failedPostsQuery->orderBy('updated_at', 'desc')
             ->limit(3)
             ->get()
             ->map(function ($post) {
@@ -128,7 +174,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        $service = new \App\Services\FacebookPageService();
+        $service = new \App\Services\FacebookPageService($resolvedPage);
         $publishMode = $service->getPublishMode();
 
         $lastRunAtStr = \App\Models\Setting::getValue('PUBLISH_DUE_LAST_RUN_AT');
@@ -150,6 +196,8 @@ class DashboardController extends Controller
             'is_recent' => $isRecent,
         ];
 
+        $pages = Page::where('is_active', true)->get();
+
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'recentPosts' => $recentPosts,
@@ -164,6 +212,10 @@ class DashboardController extends Controller
             ],
             'publishMode' => $publishMode,
             'schedulerStatus' => $schedulerStatus,
+            'pages' => $pages,
+            'filters' => [
+                'page_id' => $pageId,
+            ],
         ]);
     }
 }

@@ -2,6 +2,8 @@ import { Link, usePage } from '@inertiajs/react';
 
 const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
+    { href: '/pages', label: 'Pages', icon: '🌐' },
+    { href: '/assistant', label: 'Assistant', icon: '🤖' },
     { href: '/topics', label: 'Topics', icon: '📝' },
     { href: '/pexels', label: 'Pexels Search', icon: '🔍' },
     { href: '/queue', label: 'Queue', icon: '📋' },
@@ -46,7 +48,7 @@ export default function Sidebar() {
 
             {/* Footer */}
             <div className="border-t border-gray-700 px-6 py-4">
-                <p className="text-xs text-gray-500">Phase 1 — Blueprint Mode</p>
+                <p className="text-xs text-gray-500">Phase 7 — AI Copilot Hub</p>
             </div>
         </aside>
     );

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\PostQueue;
 use App\Models\Topic;
+use App\Models\Page;
 use App\Services\ContentCalendarService;
+use App\Services\AI\AIContentPlannerService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +17,7 @@ class CalendarController extends Controller
     {
         $year = (int)$request->input('year', Carbon::now()->year);
         $month = (int)$request->input('month', Carbon::now()->month);
+        $pageId = $request->input('page_id');
 
         // Validate and bound month/year
         if ($month < 1 || $month > 12) {
@@ -29,6 +32,11 @@ class CalendarController extends Controller
 
         $query = PostQueue::with(['topic', 'mediaItem'])
             ->whereBetween('scheduled_at', [$startDate, $endDate]);
+
+        // Filter: page_id
+        if ($request->filled('page_id') && $request->input('page_id') !== 'all') {
+            $query->where('page_id', $pageId);
+        }
 
         // Filter: status (all means no filter)
         if ($request->filled('status') && $request->input('status') !== 'all') {
@@ -54,10 +62,20 @@ class CalendarController extends Controller
             ];
         });
 
-        // Calculate missing slots (dates in this month where posts < 3)
+        // Calculate missing slots (dates in this month where posts < max_posts_per_day)
+        $resolvedPage = null;
+        if ($request->filled('page_id') && $request->input('page_id') !== 'all') {
+            $resolvedPage = Page::with('profile')->find($pageId);
+        }
+        $postsPerDay = $resolvedPage->profile->max_posts_per_day ?? 3;
+
         // Group by scheduled date
-        $countsByDate = PostQueue::whereBetween('scheduled_at', [$startDate, $endDate])
-            ->get()
+        $countsQuery = PostQueue::whereBetween('scheduled_at', [$startDate, $endDate]);
+        if ($request->filled('page_id') && $request->input('page_id') !== 'all') {
+            $countsQuery->where('page_id', $pageId);
+        }
+        
+        $countsByDate = $countsQuery->get()
             ->groupBy(function ($post) {
                 return $post->scheduled_at->format('Y-m-d');
             })
@@ -71,7 +89,7 @@ class CalendarController extends Controller
             $dateStr = $tempDate->format('Y-m-d');
             $count = $countsByDate->get($dateStr, 0);
             // Only alert for today/future dates
-            if ($count < 3 && $dateStr >= $todayStr) {
+            if ($count < $postsPerDay && $dateStr >= $todayStr) {
                 $missingSlotsDates[] = $dateStr;
             }
             $tempDate->addDay();
@@ -84,13 +102,16 @@ class CalendarController extends Controller
             ];
         });
 
+        $pages = Page::where('is_active', true)->get();
+
         return Inertia::render('Calendar/Index', [
             'posts' => $posts,
             'month' => $month,
             'year' => $year,
             'topics' => $topics,
             'missingSlotsDates' => $missingSlotsDates,
-            'filters' => $request->only(['status', 'topic_id']),
+            'filters' => $request->only(['status', 'topic_id', 'page_id']),
+            'pages' => $pages,
         ]);
     }
 
@@ -103,8 +124,28 @@ class CalendarController extends Controller
             'topic_ids' => 'nullable|array',
             'topic_ids.*' => 'exists:topics,id',
             'media_type' => 'nullable|in:photo,video,both',
+            'page_id' => 'nullable|exists:pages,id',
         ]);
 
+        $pageId = $request->input('page_id');
+
+        if ($pageId) {
+            $page = Page::findOrFail($pageId);
+            $planner = new AIContentPlannerService();
+            $plan = $planner->generatePlanForPage($page, [
+                'days' => (int)$validated['days'],
+                'posts_per_day' => (int)$validated['posts_per_day'],
+                'tone' => $page->content_tone,
+                'language' => $page->language,
+            ]);
+            $summary = $planner->createDraftsFromPlan($page, $plan);
+
+            $created = $summary['created_count'] ?? 0;
+            return redirect()->route('calendar.index', ['page_id' => $page->id])
+                ->with('success', "Auto-generated {$created} drafts for Page '{$page->name}' successfully!");
+        }
+
+        // Legacy ContentCalendarService flow
         $options = [
             'posts_per_day' => (int)$validated['posts_per_day'],
             'start_date' => $validated['start_date'] ?? null,

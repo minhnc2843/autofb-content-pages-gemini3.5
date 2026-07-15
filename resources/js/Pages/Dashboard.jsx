@@ -3,22 +3,26 @@ import StatusBadge from '../Components/StatusBadge';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
-export default function Dashboard({ stats, recentPosts, insights, audit, extraStats }) {
+export default function Dashboard({ stats, recentPosts, insights, audit, extraStats, pages, filters, publishMode, schedulerStatus }) {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isAuditing, setIsAuditing] = useState(false);
 
     const handleSyncInsights = () => {
         setIsSyncing(true);
-        router.post('/insights/sync', {}, {
+        router.post('/insights/sync', { page_id: filters?.page_id }, {
             onFinish: () => setIsSyncing(false)
         });
     };
 
     const handleRunAudit = () => {
         setIsAuditing(true);
-        router.post('/insights/audit', {}, {
+        router.post('/insights/audit', { page_id: filters?.page_id }, {
             onFinish: () => setIsAuditing(false)
         });
+    };
+
+    const handlePageChange = (pageId) => {
+        router.get('/', { page_id: pageId }, { preserveState: true });
     };
 
     const statCards = [
@@ -60,6 +64,27 @@ export default function Dashboard({ stats, recentPosts, insights, audit, extraSt
 
     return (
         <AppLayout title="Dashboard">
+            {/* Page Scoping Selector */}
+            <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Scoping Filter</h3>
+                    <p className="text-xs text-gray-500">View stats and execute operations for a specific Page profile.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Active Page:</label>
+                    <select
+                        value={filters?.page_id || ''}
+                        onChange={(e) => handlePageChange(e.target.value)}
+                        className="rounded-lg border-gray-300 text-xs py-1.5 px-3 bg-white text-gray-800 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">All Pages / Legacy Default</option>
+                        {pages && pages.map(page => (
+                            <option key={page.id} value={page.id}>{page.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             {/* Stat cards */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {statCards.map((card) => (
@@ -110,7 +135,7 @@ export default function Dashboard({ stats, recentPosts, insights, audit, extraSt
                             style={{ width: `${extraStats?.coverage_percent ?? 0}%` }}
                         ></div>
                     </div>
-                    <span className="text-[10px] text-gray-400 block mt-2">Target: 3 posts/day (21 total slots scheduled over 7 days)</span>
+                    <span className="text-[10px] text-gray-400 block mt-2">Target coverage score based on posting schedule slots.</span>
                 </div>
             </div>
 

@@ -8,16 +8,17 @@ use Illuminate\Console\Command;
 
 class PublishDuePostsCommand extends Command
 {
-    protected $signature = 'posts:publish-due';
+    protected $signature = 'posts:publish-due {--page= : Filter by page ID}';
     protected $description = 'Publish due approved posts via Facebook Pages API or fake mode';
 
     public function handle(): int
     {
         $service = new DuePostPublisherService();
+        $pageId = $this->option('page');
         
         $this->info("Checking for due posts to publish...");
 
-        $result = $service->publishDuePosts(false);
+        $result = $service->publishDuePosts(false, $pageId ? intval($pageId) : null);
 
         $found = $result['found'];
         $published = $result['published'];

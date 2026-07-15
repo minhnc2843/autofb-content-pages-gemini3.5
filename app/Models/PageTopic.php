@@ -5,27 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class PageInsight extends Model
+class PageTopic extends Model
 {
     use HasFactory;
 
-    protected $table = 'page_insights';
-
     protected $fillable = [
         'page_id',
-        'metric',
-        'period',
-        'values_json',
-        'fetched_date',
+        'name',
+        'keyword',
+        'language',
+        'priority',
+        'cooldown_days',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'priority' => 'integer',
+        'cooldown_days' => 'integer',
+        'is_active' => 'boolean',
     ];
 
     public function page()
     {
         return $this->belongsTo(Page::class);
     }
-
-    protected $casts = [
-        'values_json' => 'array',
-        'fetched_date' => 'date',
-    ];
 }

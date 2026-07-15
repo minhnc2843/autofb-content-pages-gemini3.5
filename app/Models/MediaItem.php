@@ -10,6 +10,7 @@ class MediaItem extends Model
     use HasFactory;
 
     protected $fillable = [
+        'page_id',
         'pexels_id',
         'type',
         'url',
@@ -22,6 +23,11 @@ class MediaItem extends Model
         'pexels_url',
         'raw_json',
     ];
+
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
 
     protected $casts = [
         'raw_json' => 'array',

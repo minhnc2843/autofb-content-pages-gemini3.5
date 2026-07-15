@@ -3,14 +3,16 @@ import { useState, useEffect } from 'react';
 import AppLayout from '../../Components/AppLayout';
 import StatusBadge from '../../Components/StatusBadge';
 
-export default function Index({ posts, month, year, topics, missingSlotsDates, filters }) {
+export default function Index({ posts, month, year, topics, missingSlotsDates, filters, pages }) {
     const [statusFilter, setStatusFilter] = useState(filters?.status || '');
     const [topicIdFilter, setTopicIdFilter] = useState(filters?.topic_id || '');
+    const [pageIdFilter, setPageIdFilter] = useState(filters?.page_id || '');
     const [showGenerateModal, setShowGenerateModal] = useState(false);
     
     // Generator parameters
     const [generateDays, setGenerateDays] = useState('7');
     const [postsPerDay, setPostsPerDay] = useState('3');
+    const [generatePageId, setGeneratePageId] = useState(filters?.page_id || '');
     const [generating, setGenerating] = useState(false);
 
     // Apply active filters on dropdown updates
@@ -19,9 +21,10 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
             month,
             year,
             status: statusFilter,
-            topic_id: topicIdFilter
+            topic_id: topicIdFilter,
+            page_id: pageIdFilter
         }, { preserveState: true, preserveScroll: true });
-    }, [statusFilter, topicIdFilter]);
+    }, [statusFilter, topicIdFilter, pageIdFilter]);
 
     // Handle Month/Year navigation
     const navigateMonth = (direction) => {
@@ -40,7 +43,8 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
             month: newMonth,
             year: newYear,
             status: statusFilter,
-            topic_id: topicIdFilter
+            topic_id: topicIdFilter,
+            page_id: pageIdFilter
         });
     };
 
@@ -80,7 +84,8 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
         setGenerating(true);
         router.post('/calendar/generate', {
             days: generateDays,
-            posts_per_day: postsPerDay
+            posts_per_day: postsPerDay,
+            page_id: generatePageId || null,
         }, {
             onSuccess: () => {
                 setShowGenerateModal(false);
@@ -115,6 +120,17 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
 
                 {/* Filters & Actions */}
                 <div className="flex flex-wrap items-center gap-3">
+                    <select
+                        value={pageIdFilter}
+                        onChange={(e) => setPageIdFilter(e.target.value)}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-xs shadow-sm bg-white focus:outline-none"
+                    >
+                        <option value="">All Pages / Default</option>
+                        {pages && pages.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
@@ -186,7 +202,7 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
                                     {cell.hasWarning && (
                                         <span 
                                             className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800"
-                                            title="Missing slots: This day has fewer than 3 posts scheduled (08:00, 13:00, 20:00)."
+                                            title="Missing slots: This day has fewer than required posts scheduled."
                                         >
                                             ⚠ Missing slots
                                         </span>
@@ -242,9 +258,23 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
                             ⚡ Auto-Generate Schedule
                         </h3>
                         <p className="text-xs text-gray-500 mb-4">
-                            Generate draft posts scheduled at 08:00, 13:00, and 20:00 using media related to active topics. Duplicates will be avoided.
+                            Generate draft posts using media related to active topics. Duplicates will be avoided.
                         </p>
                         <form onSubmit={handleGenerateSubmit}>
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Target Page</label>
+                                <select
+                                    value={generatePageId}
+                                    onChange={(e) => setGeneratePageId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
+                                >
+                                    <option value="">Legacy Default Page / Settings</option>
+                                    {pages && pages.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div className="mb-4">
                                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Days to schedule</label>
                                 <select
@@ -267,7 +297,7 @@ export default function Index({ posts, month, year, topics, missingSlotsDates, f
                                 >
                                     <option value="1">1 post/day</option>
                                     <option value="2">2 posts/day</option>
-                                    <option value="3">3 posts/day (Default)</option>
+                                    <option value="3">3 posts/day</option>
                                 </select>
                             </div>
 

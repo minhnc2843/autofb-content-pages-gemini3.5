@@ -9,6 +9,8 @@ use App\Http\Controllers\PageInsightController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\AICaptionController;
 use App\Http\Controllers\StrategyController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\AssistantController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -58,3 +60,19 @@ Route::post('/ai/generate-captions', [AICaptionController::class, 'generate'])->
 // Strategy Engine
 Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index');
 Route::post('/strategy/generate', [StrategyController::class, 'generate'])->name('strategy.generate');
+
+// Pages Management
+Route::get('/pages', [PageController::class, 'index'])->name('pages.index');
+Route::get('/pages/create', [PageController::class, 'create'])->name('pages.create');
+Route::post('/pages', [PageController::class, 'store'])->name('pages.store');
+Route::get('/pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
+Route::put('/pages/{page}', [PageController::class, 'update'])->name('pages.update');
+Route::post('/pages/{page}/validate-facebook', [PageController::class, 'validateFacebook'])->name('pages.validateFacebook');
+Route::post('/pages/{page}/set-default', [PageController::class, 'setDefault'])->name('pages.setDefault');
+Route::post('/pages/{page}/toggle-active', [PageController::class, 'toggleActive'])->name('pages.toggleActive');
+
+// AI Assistant / Chatbot
+Route::get('/assistant', [AssistantController::class, 'index'])->name('assistant');
+Route::post('/assistant/message', [AssistantController::class, 'message'])->name('assistant.message');
+Route::post('/assistant/tasks/{task}/confirm', [AssistantController::class, 'confirmTask'])->name('assistant.confirmTask');
+Route::post('/assistant/tasks/{task}/cancel', [AssistantController::class, 'cancelTask'])->name('assistant.cancelTask');

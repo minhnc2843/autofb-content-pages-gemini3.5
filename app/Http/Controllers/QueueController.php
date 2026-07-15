@@ -15,7 +15,12 @@ class QueueController extends Controller
         $service = new FacebookPageService();
         $publishMode = $service->getPublishMode();
 
-        $query = PostQueue::with(['topic', 'mediaItem', 'aiAnalyses']);
+        $query = PostQueue::with(['page', 'topic', 'mediaItem', 'aiAnalyses']);
+
+        // Filter: page_id
+        if ($request->filled('page_id')) {
+            $query->where('page_id', $request->input('page_id'));
+        }
 
         // Filter: status
         if ($request->filled('status')) {
@@ -90,6 +95,7 @@ class QueueController extends Controller
                 'status' => $post->status,
                 'scheduled_at' => $post->scheduled_at?->format('Y-m-d\TH:i'),
                 'scheduled_at_display' => $post->scheduled_at?->format('Y-m-d H:i'),
+                'page_name' => $post->page?->name ?? 'Default Page',
                 'topic_name' => $post->topic?->name ?? 'N/A',
                 'thumbnail_url' => $post->mediaItem?->thumbnail_url,
                 'media_url' => $post->mediaItem?->url,
@@ -133,12 +139,15 @@ class QueueController extends Controller
             'is_recent' => $isRecent,
         ];
 
+        $pages = \App\Models\Page::where('is_active', true)->get();
+
         return Inertia::render('Queue/Index', [
             'posts' => $posts,
             'publishMode' => $publishMode,
-            'filters' => $request->only(['status', 'media_type', 'topic_id', 'date_from', 'date_to', 'search', 'sort']),
+            'filters' => $request->only(['status', 'media_type', 'topic_id', 'date_from', 'date_to', 'search', 'sort', 'page_id']),
             'topics' => $topics,
             'schedulerStatus' => $schedulerStatus,
+            'pages' => $pages,
         ]);
     }
 

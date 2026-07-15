@@ -1,5 +1,41 @@
 # Changelog
 
+## [Phase 7] — 2026-07-15
+
+### Added
+- **Multi-Page Management (Quản lý nhiều Page)**:
+  - Created pages, profiles, and topics tables to store page-specific Facebook credentials, timezone, niche profile metadata, mix ratios, slot configurations, and active topics.
+  - Automatically seeded a "Default Facebook Page" using legacy global settings to ensure backward compatibility.
+  - Page CRUD controller (`PageController`) supporting presets filling, default page selection, configuration validation, and active toggling.
+  - Front-end views `Pages/Index.jsx` and `Pages/Form.jsx` supporting presets setup, timezone selects, mix ratio controls, and page validation.
+  - Added page filter inputs to Dashboard, Calendar, and Queue screens, and displayed current page context inside table rows and statistics.
+- **AI Chatbot Assistant (AI Copilot Hub)**:
+  - Created chat sessions, messages, and tasks tables to host chat logs and pending background operations.
+  - Giao diện `Assistant/Index.jsx` offering session sidebars, messaging logs, and task confirmation panels.
+  - Chatbot intent parser and controller (`AssistantController` and `AIAssistantService`) supporting `create_content_plan`, `generate_drafts`, `analyze_page`, `optimize_schedule`, `update_page_token`, and `validate_page_token` intents.
+- **Secure Secrets Redaction (Che giấu token)**:
+  - Created `SecretRedactionService` to detect Facebook access tokens in raw message strings, encrypt and store them in `pending_secrets`, and redact them with `[FACEBOOK_PAGE_ACCESS_TOKEN_REDACTED]` prior to saving chat history or forwarding to Gemini API.
+- **Review and Execute Plan Workflow (Panel Duyệt Việc)**:
+  - Created tasks in status `awaiting_confirmation` for AI actions.
+  - Added task confirmation and cancellation endpoints, verifying page credentials, plan details, and updating status to `completed` or `failed` post-execution.
+- **Separated Command Scope**:
+  - Upgraded `DuePostPublisherService` and `PublishDuePostsCommand` (`posts:publish-due`) to support optional `--page=` parameters for running target publishing tasks.
+
+### Tests Added
+- `Phase7FoundationTest.php`:
+  - `test_secret_redaction_service_redacts_fb_tokens`: Verifies short and long token detection, redaction tag mapping, and pending secrets storage.
+  - `test_assistant_does_not_store_raw_tokens_in_chat_history`: Verifies user messages in database do not contain raw tokens.
+  - `test_update_page_token_task_confirm_decrypts_and_saves_token`: Verifies that confirming update token task decrypts pending secrets and updates page credentials.
+  - `test_validate_page_token_task_confirm_executes_successfully`: Verifies Graph API validate task execution.
+  - `test_tokens_are_never_sent_to_gemini_prompts`: Verifies Gemini prompts do not receive raw credentials.
+  - `test_pending_secrets_cleanup_expires_old_secrets`: Verifies purging of expired pending secrets.
+  - `test_page_crud_and_presets`: Verifies page creation, presets, and profile relations.
+  - `test_page_profile_validation`: Verifies profile relationships and validation.
+  - `test_queue_index_filters_posts_by_page_id`: Verifies page scoping in Queue index.
+  - `test_publish_due_command_publishes_scoped_posts_for_specific_page`: Verifies page scope in scheduling commands.
+
+---
+
 ## [Acceptance Fix Pack] — 2026-07-14
 
 ### Added

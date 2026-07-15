@@ -14,10 +14,16 @@ class DuePostPublisherService
         $this->fbService = new FacebookPageService();
     }
 
-    public function publishDuePosts(bool $dryRun = false): array
+    public function publishDuePosts(bool $dryRun = false, ?int $pageId = null): array
     {
+        $query = PostQueue::due()->with('mediaItem');
+
+        if ($pageId) {
+            $query->where('page_id', $pageId);
+        }
+
+        $duePosts = $query->get();
         $mode = $this->fbService->getPublishMode();
-        $duePosts = PostQueue::due()->with('mediaItem')->get();
 
         $summary = [
             'found' => $duePosts->count(),
@@ -45,7 +51,9 @@ class DuePostPublisherService
         foreach ($duePosts as $post) {
             $statusBefore = $post->status;
             try {
-                $result = $this->fbService->publishPost($post);
+                $postPage = $post->page_id ? \App\Models\Page::find($post->page_id) : null;
+                $postFbService = new FacebookPageService($postPage);
+                $result = $postFbService->publishPost($post);
 
                 if ($result['success']) {
                     $summary['published']++;

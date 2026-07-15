@@ -6,12 +6,23 @@ use App\Models\PostPublishLog;
 use App\Models\PostQueue;
 use App\Models\Setting;
 use App\Models\PageInsight;
+use App\Models\Page;
+use App\Services\PageContextService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class FacebookPageService
 {
+    protected ?Page $page = null;
+    protected PageContextService $contextService;
+
+    public function __construct(?Page $page = null)
+    {
+        $this->page = $page;
+        $this->contextService = new PageContextService();
+    }
+
     /**
      * Get the Meta Graph API base URL.
      */
@@ -26,6 +37,12 @@ class FacebookPageService
      */
     public function getPageId(): string
     {
+        if ($this->page) {
+            $credentials = $this->contextService->getPageCredential($this->page);
+            if (!empty($credentials['facebook_page_id'])) {
+                return $credentials['facebook_page_id'];
+            }
+        }
         $pageId = Setting::getValue('FACEBOOK_PAGE_ID');
         if (empty($pageId)) {
             throw new RuntimeException(
@@ -40,6 +57,12 @@ class FacebookPageService
      */
     public function getPageAccessToken(): string
     {
+        if ($this->page) {
+            $credentials = $this->contextService->getPageCredential($this->page);
+            if (!empty($credentials['access_token'])) {
+                return $credentials['access_token'];
+            }
+        }
         $token = Setting::getValue('FACEBOOK_PAGE_ACCESS_TOKEN');
         if (empty($token)) {
             throw new RuntimeException(
@@ -54,6 +77,12 @@ class FacebookPageService
      */
     public function getPublishMode(): string
     {
+        if ($this->page) {
+            $credentials = $this->contextService->getPageCredential($this->page);
+            if (!empty($credentials['publish_mode'])) {
+                return $credentials['publish_mode'];
+            }
+        }
         return Setting::getValue('FACEBOOK_PUBLISH_MODE', env('FACEBOOK_PUBLISH_MODE', 'fake'));
     }
 
@@ -477,16 +506,25 @@ class FacebookPageService
         }
     }
 
+    public function getPage(): ?Page
+    {
+        return $this->page;
+    }
+
     /**
      * Main publish method — handles fake/real mode routing.
      */
     public function publishPost(PostQueue $post): array
     {
+        if ($post->page_id) {
+            $this->page = Page::find($post->page_id);
+        }
+
         $post->load('mediaItem');
         $mediaType = $post->mediaItem?->type;
 
         if ($mediaType === 'video' && Setting::getValue('FACEBOOK_PUBLISH_AS_REEL', env('FACEBOOK_PUBLISH_AS_REEL', 'false')) === 'true') {
-            $reelsService = new FacebookReelsService();
+            $reelsService = new FacebookReelsService($this);
             $result = $reelsService->publishReelPost($post);
 
             if ($result['success']) {
@@ -615,6 +653,7 @@ class FacebookPageService
         }
 
         PostPublishLog::create([
+            'page_id' => $this->page?->id,
             'post_queue_id' => $post?->id,
             'mode' => $this->getPublishMode(),
             'provider' => 'facebook',
@@ -681,6 +720,7 @@ class FacebookPageService
                     };
                     PageInsight::updateOrCreate(
                         [
+                            'page_id' => $this->page?->id,
                             'metric' => $metric,
                             'period' => $metric === 'page_fans' ? 'lifetime' : 'day',
                             'fetched_date' => $date,
@@ -746,6 +786,7 @@ class FacebookPageService
 
                     PageInsight::updateOrCreate(
                         [
+                            'page_id' => $this->page?->id,
                             'metric' => $name,
                             'period' => $period,
                             'fetched_date' => $date,

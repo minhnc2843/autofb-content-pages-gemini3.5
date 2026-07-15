@@ -32,6 +32,7 @@ class PostQueue extends Model
     }
 
     protected $fillable = [
+        'page_id',
         'topic_id',
         'media_item_id',
         'caption',
@@ -50,6 +51,11 @@ class PostQueue extends Model
         'published_at' => 'datetime',
         'publish_attempts' => 'integer',
     ];
+
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
 
     public function topic()
     {

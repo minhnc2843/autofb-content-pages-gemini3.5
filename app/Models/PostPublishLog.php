@@ -10,6 +10,7 @@ class PostPublishLog extends Model
     use HasFactory;
 
     protected $fillable = [
+        'page_id',
         'post_queue_id',
         'mode',
         'provider',
@@ -19,6 +20,11 @@ class PostPublishLog extends Model
         'response_json',
         'error_message',
     ];
+
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
 
     protected $casts = [
         'request_summary' => 'array',

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import AppLayout from '../../Components/AppLayout';
 import StatusBadge from '../../Components/StatusBadge';
 
-export default function Index({ posts, publishMode, filters, topics, schedulerStatus }) {
+export default function Index({ posts, publishMode, filters, topics, schedulerStatus, pages }) {
     const safePosts = posts && Array.isArray(posts.data) ? posts.data : [];
     const pagination = posts && typeof posts === 'object' ? posts : {
         data: [],
@@ -40,6 +40,7 @@ export default function Index({ posts, publishMode, filters, topics, schedulerSt
     const [dateToFilter, setDateToFilter] = useState(safeFilters.date_to || '');
     const [searchFilter, setSearchFilter] = useState(safeFilters.search || '');
     const [sortFilter, setSortFilter] = useState(safeFilters.sort || 'created_at_desc');
+    const [pageIdFilter, setPageIdFilter] = useState(safeFilters.page_id || '');
 
     const handleApprove = (id) => {
         router.patch(`/queue/${id}/approve`, {}, { preserveScroll: true });
@@ -100,6 +101,7 @@ export default function Index({ posts, publishMode, filters, topics, schedulerSt
             date_to: dateToFilter,
             search: searchFilter,
             sort: sortFilter,
+            page_id: pageIdFilter,
             ...newFilters
         };
         router.get('/queue', merged, { 
@@ -120,6 +122,7 @@ export default function Index({ posts, publishMode, filters, topics, schedulerSt
         setDateToFilter('');
         setSearchFilter('');
         setSortFilter('created_at_desc');
+        setPageIdFilter('');
         router.get('/queue', {}, { preserveScroll: true });
     };
 
@@ -262,6 +265,24 @@ export default function Index({ posts, publishMode, filters, topics, schedulerSt
                                 Go
                             </button>
                         </div>
+                    </div>
+
+                    {/* Page filter */}
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Page</label>
+                        <select
+                            value={pageIdFilter}
+                            onChange={(e) => {
+                                setPageIdFilter(e.target.value);
+                                applyFiltersWithValues({ page_id: e.target.value });
+                            }}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                        >
+                            <option value="">All Pages / Legacy Default</option>
+                            {pages && pages.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Status filter */}
@@ -472,6 +493,7 @@ export default function Index({ posts, publishMode, filters, topics, schedulerSt
                                                 {post.caption || 'No caption'}
                                             </p>
                                             <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] bg-indigo-50 text-indigo-700 font-semibold rounded px-1">{post.page_name}</span>
                                                 <span className="text-[10px] bg-gray-100 text-gray-500 rounded px-1">{post.topic_name}</span>
                                                 {post.facebook_post_id && (
                                                     <span className="text-[10px] bg-green-50 text-green-700 rounded px-1 font-medium">
